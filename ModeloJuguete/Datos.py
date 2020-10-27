@@ -18,7 +18,7 @@ class Datos:
     def __init__(self, nombreFichero):
         #Inicialización datos
         self.df = pd.read_csv(nombreFichero, header=0)
-        self.datos = self.df.to_numpy(self.df.dtypes)
+        self.datos = self.df.values
         self.cols = self.df.columns.values
 
         #Inicialización nominalAtributos
@@ -38,4 +38,9 @@ class Datos:
         return self.datos[ idx ]
 
     def extraeCols(self, names):
-        return self.df[names].to_numpy(self.df[names].dtypes)
+        cols = []
+        for i, col in enumerate(self.cols):
+            if col in names:
+                cols.append(i)
+        
+        return self.datos[:,cols]

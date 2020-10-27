@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import numpy as np
+import pandas as pd
 
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
@@ -127,3 +128,19 @@ class ArmkNN(Arm):
                 item = i
                 rating = newRating
         return item
+
+class ArmNB(Arm):
+    # El trainSet está compuesto por tres columnas: userId, itemId, rating
+    def __init__(self,trainSet):
+        self.trainSet = trainSet
+        self.num_ratings = len(np.unique(trainSet[:,2]))
+        self.num_items = len(np.unique(trainSet[:,1]))
+        self.num_users = len(np.unique(trainSet[:,0]))
+
+    # Tabla de frecuencias de dimensión num_items x num_ratings
+    def fit_priores(self):
+        priores = np.zeros((self.num_items,self.num_ratings))
+        self.priores = pd.DataFrame(priores, columns=np.unique(self.trainSet[:,2]), index=np.unique(self.trainSet[:,1]))
+        # Rellenamos la tabla de frecuencias con los datos
+        for row in self.trainSet:
+            self.priores.loc[row[1],row[2]] += 1

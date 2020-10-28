@@ -15,7 +15,7 @@ def encodeAtribute(datos):
 
 class Datos:
 
-    def __init__(self, nombreFichero):
+    def __init__(self, nombreFichero, nominal=True):
         #Inicialización datos
         self.df = pd.read_csv(nombreFichero, header=0)
         self.datos = self.df.values
@@ -26,13 +26,13 @@ class Datos:
         types = self.types.array
         self.nominalAtributos = [isNominal(x) for x in types]
 
+        if nominal:
+            #Inicialización diccionario
+            self.diccionario = [encodeAtribute(self.datos[:,i]) if val else {} for i, val in enumerate(self.nominalAtributos)]
 
-        #Inicialización diccionario
-        self.diccionario = [encodeAtribute(self.datos[:,i]) if val else {} for i, val in enumerate(self.nominalAtributos)]
-
-        for i in range(np.shape(self.datos)[1]):
-            if self.nominalAtributos[i]:
-                self.datos[:,i] = [self.diccionario[i].get(val) for val in self.datos[:,i]]
+            for i in range(np.shape(self.datos)[1]):
+                if self.nominalAtributos[i]:
+                    self.datos[:,i] = [self.diccionario[i].get(val) for val in self.datos[:,i]]
 
     def extraeDatos(self, idx):
         return self.datos[ idx ]
@@ -42,5 +42,5 @@ class Datos:
         for i, col in enumerate(self.cols):
             if col in names:
                 cols.append(i)
-        
+
         return self.datos[:,cols]

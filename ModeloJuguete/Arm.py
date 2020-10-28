@@ -225,14 +225,6 @@ class ArmNB(Arm):
         mask = [x not in items for x in self.trainSet[:,1]]
         notRated = self.trainSet[mask,1]
 
-        # Matriz cuyo valor tiene duplas [item,rating esperado]
-        # matrix = np.zeros((len(notRated),2))
-        # for i, it in enumerate(notRated):
-        #     # Si una predicción tiene 5 estrellas o casi paramos
-        #     rt = self.exp_rating(itemsTarget,it)
-        #     if rt >= 4.999:
-        #         return it
-        #     matrix[i] = [it,self.exp_rating(itemsTarget,it)]
         func = lambda x: exp_rating(itemsTarget,x)
         ratings = map(func,notRated)
 
@@ -240,3 +232,51 @@ class ArmNB(Arm):
         bestIndex = np.argmax(ratings)
         bestItem = notRated[bestIndex]
         return bestItem
+
+
+
+# Algoritmo Naive-Bayes item-based
+class ArmItemNB(Arm):
+    #genres: matriz numpy cuyas columnas son un item y géneros separados por barras
+    #tags: matriz numpy con columnas: item, tag
+    def __init__(self,genres,tags):
+        self.items = np.unique(genres[:,0])
+        self.num_items = len(self.items)
+        self.dataset = self.items.copy()
+        self.dataset = self.dataset.T
+        self.listCols = []
+        self.add_genres(genres)
+        self.add_tags(tags)
+
+    # Comprueba si un tag está ya introducido. Si no lo está se crea una columna, si
+    # lo está se introduce la estadísitca.
+    def check_genre(self,tag,item):
+        row = list(self.items).index(item)
+        if tag in self.listCols:
+            col = self.listCols.index(tag) + 1
+        else:
+            print(tag)
+            self.listCols.append(tag)
+            col = len(self.listCols)
+            self.dataset = np.column_stack((self.dataset,np.zeros(self.num_items)))
+        self.dataset[row,col] = 1
+
+    # Dado un dataset de items y sus géneros separados por '|', devuelve la tabla
+    # con cada genero distinto siendo una columno
+    def add_genres(self,genres):
+        for row in genres:
+            for tag in row[1].split('|'):
+                self.check_genre(tag,row[0])
+
+    # Dado un dataset de items y sus tags obtenemos la prolongación de la tabla que
+    # devuleve cada tag distinto en una columna
+    def add_tags(self,tags):
+        # Nos quedamos con los tags que se han puesto en más de una película
+        listTags, count = np.unique(tags[:,1],return_counts=True)
+        print(np.shape(listTags))
+        listTags = listTags[count > 1]
+        print(np.shape(listTags))
+
+        tagsMatrix = np.zeros(self.num_items,len(listTags))
+        # np.apply_along_axis(,0,tagsMatrix)
+        self.listCols += listTags

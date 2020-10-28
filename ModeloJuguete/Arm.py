@@ -175,22 +175,22 @@ class ArmNB(Arm):
         finalItems[:,2] = ratings
         return finalItems[:,[1,2]]
 
-    # De la tabla de resultados anterior obtenemos una tabla de frecuencias normalizada
+    # De la tabla de resultados anterior obtenemos una tabla de frecuencias.
     # La dimensión de la tabla es numItems x num_ratings, donde numItems es el número de
-    # items distintos que haya en tablaCondicional. La normalización consiste en que las columnas suman 1.
+    # items distintos que haya en tablaCondicional. Se realiza la normalización de Lagrange.
     def tablaFrecs(self,tCond):
         listItems = list(np.unique(tCond[:,0]))
         listRatings = list(self.ratings)
         # Normalización de Lagrange por defecto
-        frecs = np.zeros((len(listItems),self.num_ratings))
+        frecs = np.ones((len(listItems),self.num_ratings))
 
-        unique, counts = np.unique(tCond,return_counts=True,axis=1)
-        # LE DA LA VUELTA AL PUTO ARRAY
-        print(tCond)
-        print(unique)
-        counts += 1
+        # Ponemos el rating como la parte decimal del item, ya que unique no trabaja
+        # bien comparando arrays (cambia de sitio los elementos)
+        newtCond = tCond[:,0] + tCond[:,1]*0.1
+
+        unique, counts = np.unique(newtCond,return_counts=True)
         for i, u in enumerate(unique):
-            print(u)
-            frecs[listItems.index(u[0]),listRatings.index(u[1])] = counts[i]
-
-        return normalize(frecs, axis=1, norm='l1')
+            item = np.floor(u)
+            rt = np.around((u-item)*10,decimals=1)
+            frecs[listItems.index(item),listRatings.index(rt)] += counts[i]
+        return frecs

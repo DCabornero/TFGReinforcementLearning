@@ -194,3 +194,49 @@ class ArmNB(Arm):
             rt = np.around((u-item)*10,decimals=1)
             frecs[listItems.index(item),listRatings.index(rt)] += counts[i]
         return frecs
+
+    # Devuelve un rating esperado de un cierto item. itemsTarget es la lista de valoraciones de todos los usuarios teniendo
+    # solo en cuenta los items valorados por el target
+    def exp_rating(self, itemsTarget, item):
+        tC = self.tablaCondicional(item,itemsTarget)
+        frecs = self.tablaFrecs(tC)
+        priores = self.priores(item)
+        # Array de los productos de las probabilidades condicionales para cada rating posible
+        prodCond = np.prod(frecs,axis=0)
+        # Multiplicamos cada uno por su prior correspondiente y normalizamos
+        prod = np.multiply(prodCond,priores)
+        norm = np.linalg.norm(prod,ord=1)
+        prod /= norm
+        # Lo obtenido son los pesos de cada rating, con el producto escalar con los ratings
+        # obtenemos la valoración esperada
+        return np.dot(self.ratings,prod)
+
+    # Recomendación para un cierto target
+    def rec_item(self,target):
+        # Calculamos los items valorados por el usuario y después itemsTarget será
+        # cualquier ejemplo que contenga alguno de esos items
+        mask = self.trainSet[:,0] == target
+        items = list(np.unique(self.trainSet[mask,1]))
+        mask = np.apply_along_axis(lambda x: x[1] in items,1,self.trainSet)
+        itemsTarget = self.trainSet[mask]
+
+        # Items que no ha valorado el target
+        # mask = self.items[lambda x: x not in items]
+        mask = [x not in items for x in self.trainSet[:,1]]
+        notRated = self.trainSet[mask,1]
+
+        # Matriz cuyo valor tiene duplas [item,rating esperado]
+        # matrix = np.zeros((len(notRated),2))
+        # for i, it in enumerate(notRated):
+        #     # Si una predicción tiene 5 estrellas o casi paramos
+        #     rt = self.exp_rating(itemsTarget,it)
+        #     if rt >= 4.999:
+        #         return it
+        #     matrix[i] = [it,self.exp_rating(itemsTarget,it)]
+        func = lambda x: exp_rating(itemsTarget,x)
+        ratings = map(func,notRated)
+
+
+        bestIndex = np.argmax(ratings)
+        bestItem = notRated[bestIndex]
+        return bestItem

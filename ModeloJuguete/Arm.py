@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import normalize
+from sklearn.naive_bayes import MultinomialNB
 
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
@@ -16,25 +17,10 @@ class Arm:
     def recc_item(self,trainSet,user):
         pass
 
-# Sistema de recomendación kNN, donde la similitud entre vecinos queda definida
-# por el coeficiente de correlación de Pearson. El trainSet a pasar debe contener tres
-# columnas: userID, itemID y el rating (en este orden).
-class ArmkNN(Arm):
-    def __init__(self,k):
-        self.k = k
-
     # Submatriz que solo contiene datos de un cierto usuario
     def user_set(self, trainSet, user):
         mask = trainSet[:,0] == user
         return trainSet[mask]
-
-    # Intersección de items comunes. Devuelve una lista de dos elementos: cada
-    # uno es el trainSet que queda cuando solo tenemos a los elementos de la intersección
-    def intersect_items(self, trainSet1, trainSet2):
-        mask1 = np.isin(trainSet1[:,1],trainSet2[:,1])
-        mask2 = np.isin(trainSet2[:,1],trainSet1[:,1])
-        return [trainSet1[mask1,:],trainSet2[mask2,:]]
-
 
     # Cálculo de la media de las valoraciones de un usuario
     def user_avg(self, trainSet, user):
@@ -47,6 +33,20 @@ class ArmkNN(Arm):
     def user_avgs(self, trainSet):
         listUsers = np.unique(trainSet[:,0])
         return [self.user_avg(trainSet,user) for user in listUsers]
+
+# Sistema de recomendación kNN, donde la similitud entre vecinos queda definida
+# por el coeficiente de correlación de Pearson. El trainSet a pasar debe contener tres
+# columnas: userID, itemID y el rating (en este orden).
+class ArmkNN(Arm):
+    def __init__(self,k):
+        self.k = k
+
+    # Intersección de items comunes. Devuelve una lista de dos elementos: cada
+    # uno es el trainSet que queda cuando solo tenemos a los elementos de la intersección
+    def intersect_items(self, trainSet1, trainSet2):
+        mask1 = np.isin(trainSet1[:,1],trainSet2[:,1])
+        mask2 = np.isin(trainSet2[:,1],trainSet1[:,1])
+        return [trainSet1[mask1,:],trainSet2[mask2,:]]
 
     # Cálculo de la similitud entre dos usuarios mediante el coeficiente de correlación de
     # Pearson
@@ -239,14 +239,16 @@ class ArmNB(Arm):
 class ArmItemNB(Arm):
     #genres: matriz numpy cuyas columnas son un item y géneros separados por barras
     #tags: matriz numpy con columnas: item, tag
-    def __init__(self,genres,tags):
+    #tag_popularity: solo se tienen en cuenta los tags que hayan aparecido más veces que este número
+    #trainSet: trainSet habitual con usuario, item y rating
+    def __init__(self,genres,trainSet):
         self.items = np.unique(genres[:,0])
         self.num_items = len(self.items)
         self.dataset = self.items.copy()
-        self.dataset = self.dataset.T
         self.listCols = []
         self.add_genres(genres)
-        self.add_tags(tags)
+        self.trainSet = self.modify_trainSet(trainSet)
+        self.clf = MultinomialNB()
 
     # Comprueba si un tag está ya introducido. Si no lo está se crea una columna, si
     # lo está se introduce la estadísitca.
@@ -255,7 +257,6 @@ class ArmItemNB(Arm):
         if tag in self.listCols:
             col = self.listCols.index(tag) + 1
         else:
-            print(tag)
             self.listCols.append(tag)
             col = len(self.listCols)
             self.dataset = np.column_stack((self.dataset,np.zeros(self.num_items)))
@@ -270,13 +271,57 @@ class ArmItemNB(Arm):
 
     # Dado un dataset de items y sus tags obtenemos la prolongación de la tabla que
     # devuleve cada tag distinto en una columna
-    def add_tags(self,tags):
-        # Nos quedamos con los tags que se han puesto en más de una película
-        listTags, count = np.unique(tags[:,1],return_counts=True)
-        print(np.shape(listTags))
-        listTags = listTags[count > 1]
-        print(np.shape(listTags))
+    # def add_tags(self,tags,tPop):
+    #     # Nos quedamos con los tags que se han puesto en más de tag popularity películas
+    #     listTags, count = np.unique(tags[:,1],return_counts=True)
+    #     print(np.shape(listTags))
+    #     listTags = listTags[count >= 5] #Utilizando los params de unique posiblemente se puedan hacer cosillas
+    #     print(np.shape(listTags))
+    #
+    #     tagsMatrix = np.zeros(self.num_items,len(listTags))
+    #     # np.apply_along_axis(,0,tagsMatrix)
+    #     self.listCols += listTags
 
-        tagsMatrix = np.zeros(self.num_items,len(listTags))
-        # np.apply_along_axis(,0,tagsMatrix)
-        self.listCols += listTags
+    # Modifica los ratings por 1 y -1 en función de si las valoraciones están por encima o debajo de la media
+    def modify_trainSet(self,trainSet):
+        # Diccionario cuyas claves son los usuarios y los valores su media
+        list_users = np.unique(trainSet[:,0])
+        dictAvg = {u:self.user_avg(trainSet,u) for u in list_users}
+
+        func = lambda x: 1 if dictAvg.get(x[0]) <= x[2] else -1
+        new_ratings = np.apply_along_axis(func,1,trainSet)
+
+        trainSet[:,2] = new_ratings
+        return trainSet
+
+    # Recomendación de un item a un cierto usuario target
+    def rec_item(self,user):
+        # Nuestro trainSet en esta recomendación son los items ya valorados por el usuario
+        # El resto formarán el testSet
+        # Comenzamos hallando los ratings binarios (-1,1) para los items visualizados por el target
+        mask = self.trainSet[:,0] == user
+        itemRatings = (self.trainSet[mask,:])[:,[1,2]]
+        itemSet = itemRatings[:,0]
+
+        # Fabricamos nuestros conjuntos train y test
+        func = lambda x: True if x[0] in itemSet else False
+        mask = np.apply_along_axis(func,1,self.dataset) #NO HAY DATOS REPETIDO EN DATASET
+
+        train = self.dataset[mask]
+        test = self.dataset[np.logical_not(mask)]
+
+        # Sabiendo que train y itemRatings tienen los mismos items, los ordenamos y
+        # obtendremos el conjunto de entrenamiento y sus resultados
+        orderTrain = np.argsort(train,axis=0)[:,0]
+        X_train = (train[orderTrain])[:,1:]
+        orderRatings = np.argsort(itemRatings,axis=0)[:,0]
+        y_train = (itemRatings[orderRatings])[:,1]
+
+        X_test = test[:,1:]
+
+        # Entrenamos con scipy y obtenemos las predicciones
+        self.clf.fit(X_train,y_train)
+        preds = self.clf.predict_proba(X_test)
+
+        bestPred = np.argmax(preds[:,1])
+        return test[bestPred,0]

@@ -13,8 +13,14 @@ class Arm:
         self.hits = 0
         self.fails = 0
 
+    # Dado un usuario recomienda un cierto item
     @abstractmethod
-    def recc_item(self,trainSet,user):
+    def rec_item(self,user):
+        pass
+
+    # Indica a un cierto brazo cual es el trainSet sobre el que debe entrenarse
+    @abstractmethod
+    def initSet(self,trainSet):
         pass
 
     # Submatriz que solo contiene datos de un cierto usuario
@@ -34,12 +40,16 @@ class Arm:
         listUsers = np.unique(trainSet[:,0])
         return [self.user_avg(trainSet,user) for user in listUsers]
 
+
 # Sistema de recomendación kNN, donde la similitud entre vecinos queda definida
 # por el coeficiente de correlación de Pearson. El trainSet a pasar debe contener tres
 # columnas: userID, itemID y el rating (en este orden).
 class ArmkNN(Arm):
     def __init__(self,k):
         self.k = k
+
+    def initSet(self,trainSet):
+        self.trainSet = trainSet
 
     # Intersección de items comunes. Devuelve una lista de dos elementos: cada
     # uno es el trainSet que queda cuando solo tenemos a los elementos de la intersección
@@ -100,40 +110,42 @@ class ArmkNN(Arm):
         return avguser + numer/den
 
     # Función principal: recomienda un item a un cierto usuario
-    def rec_item(self,trainSet,user):
-        userSet = self.user_set(trainSet,user)
+    def rec_item(self,user):
+        userSet = self.user_set(self.trainSet,user)
 
         # Lista de usuarios sin el usuario target
-        listUsers = np.unique(trainSet[:,0])
+        listUsers = np.unique(self.trainSet[:,0])
         listUsers = listUsers[listUsers != user]
 
         # Lista de items evaluados por el target
-        userItems = np.unique(trainSet[trainSet[:,0] == user,1])
+        userItems = np.unique(self.trainSet[self.trainSet[:,0] == user,1])
         # Lista de items no recomendados al target
-        mask = np.logical_not(np.isin(trainSet[:,1],userItems))
-        listItems = np.unique(trainSet[mask,1])
+        mask = np.logical_not(np.isin(self.trainSet[:,1],userItems))
+        listItems = np.unique(self.trainSet[mask,1])
 
         usersInfo = {}
-        avgUser = self.user_avg(trainSet,user)
+        avgUser = self.user_avg(self.trainSet,user)
 
         for u in listUsers:
-            userSet2 = self.user_set(trainSet,u)
-            avg2 = self.user_avg(trainSet,u)
+            userSet2 = self.user_set(self.trainSet,u)
+            avg2 = self.user_avg(self.trainSet,u)
             usersInfo[u] = [avg2,self.Pearson(userSet,userSet2,avgUser,avg2)]
 
         # Nos vamos quedando con el item con mejor rating
         item = -1
         rating = 0
         for i in listItems:
-            newRating = self.rate(user,avgUser,i,trainSet,usersInfo)
+            newRating = self.rate(user,avgUser,i,self.trainSet,usersInfo)
             if newRating > rating:
                 item = i
                 rating = newRating
         return item
 
+
+
 class ArmNB(Arm):
     # El trainSet está compuesto por tres columnas: userId, itemId, rating
-    def __init__(self,trainSet):
+    def initSet(self,trainSet):
         self.trainSet = trainSet
         self.ratings = np.unique(trainSet[:,2])
         self.num_ratings = len(self.ratings)
@@ -241,14 +253,16 @@ class ArmItemNB(Arm):
     #tags: matriz numpy con columnas: item, tag
     #tag_popularity: solo se tienen en cuenta los tags que hayan aparecido más veces que este número
     #trainSet: trainSet habitual con usuario, item y rating
-    def __init__(self,genres,trainSet):
+    def __init__(self,genres):
         self.items = np.unique(genres[:,0])
         self.num_items = len(self.items)
         self.dataset = self.items.copy()
         self.listCols = []
         self.add_genres(genres)
-        self.trainSet = self.modify_trainSet(trainSet)
         self.clf = MultinomialNB()
+
+    def initSet(self,trainSet):
+        self.trainSet = self.modify_trainSet(trainSet)
 
     # Comprueba si un tag está ya introducido. Si no lo está se crea una columna, si
     # lo está se introduce la estadísitca.

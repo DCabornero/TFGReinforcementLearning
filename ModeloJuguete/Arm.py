@@ -13,6 +13,12 @@ class Arm:
         self.hits = 0
         self.fails = 0
 
+    def accuracy(self):
+        if self.hits + self.fails == 0:
+            return 0
+        else:
+            return self.hits/(self.hits+self.fails)
+
     # Dado un usuario recomienda un cierto item
     @abstractmethod
     def rec_item(self,user):
@@ -21,6 +27,16 @@ class Arm:
     # Indica a un cierto brazo cual es el trainSet sobre el que debe entrenarse
     @abstractmethod
     def initSet(self,trainSet):
+        pass
+
+    # Añade un ejemplo al trainSet
+    @abstractmethod
+    def add_sample(self,sample):
+        pass
+
+    # Añade una mala valoración a un ejemplo del que desconocemos el rating
+    @abstractmethod
+    def add_bad_sample(self,user,item):
         pass
 
     # Submatriz que solo contiene datos de un cierto usuario
@@ -46,23 +62,32 @@ class Arm:
 # columnas: userID, itemID y el rating (en este orden).
 class ArmkNN(Arm):
     def __init__(self,k):
+        super().__init__()
         self.k = k
 
     def initSet(self,trainSet):
         self.trainSet = trainSet
+
+    def add_sample(self,sample):
+        self.trainSet = np.vstack((self.trainSet,sample))
+
+    def add_bad_sample(self,user,item):
+        self.add_sample([user,item,1])
 
     # Intersección de items comunes. Devuelve una lista de dos elementos: cada
     # uno es el trainSet que queda cuando solo tenemos a los elementos de la intersección
     def intersect_items(self, trainSet1, trainSet2):
         mask1 = np.isin(trainSet1[:,1],trainSet2[:,1])
         mask2 = np.isin(trainSet2[:,1],trainSet1[:,1])
-        return [trainSet1[mask1,:],trainSet2[mask2,:]]
+        return [trainSet1[mask1],trainSet2[mask2]]
 
     # Cálculo de la similitud entre dos usuarios mediante el coeficiente de correlación de
     # Pearson
     def Pearson(self,set1,set2,avg1,avg2):
         inters1, inters2 = self.intersect_items(set1,set2)
         if np.shape(inters1)[0] == 0 or np.shape(inters2)[0] == 0:
+            return 0
+        if np.shape(inters1)[0] != np.shape(inters2)[0]:
             return 0
         dif1 = inters1[:,2]-avg1
         dif2 = inters2[:,2]-avg2
@@ -153,6 +178,12 @@ class ArmNB(Arm):
         self.num_items = len(self.items)
         self.users = np.unique(trainSet[:,0])
         self.num_users = len(self.users)
+
+    def add_sample(self,sample):
+        self.initSet(np.vstack((self.trainSet,sample)))
+
+    def add_bad_sample(self,user,item):
+        self.add_sample([user,item,1])
 
     # Se calculan los priores (ratings) para un cierto item
     def priores(self, item):
@@ -254,6 +285,7 @@ class ArmItemNB(Arm):
     #tag_popularity: solo se tienen en cuenta los tags que hayan aparecido más veces que este número
     #trainSet: trainSet habitual con usuario, item y rating
     def __init__(self,genres):
+        super().__init__()
         self.items = np.unique(genres[:,0])
         self.num_items = len(self.items)
         self.dataset = self.items.copy()
@@ -263,6 +295,16 @@ class ArmItemNB(Arm):
 
     def initSet(self,trainSet):
         self.trainSet = self.modify_trainSet(trainSet)
+
+    def add_sample(self,sample):
+        if sample[2] <= self.dictAvg.get(sample[0]):
+            sample[2] = -1
+        else:
+            sample[2] = 1
+        self.trainSet = np.vstack((self.trainSet,sample))
+
+    def add_bad_sample(self,user,item):
+        self.trainSet = np.vstack((self.trainSet,[user,item,-1]))
 
     # Comprueba si un tag está ya introducido. Si no lo está se crea una columna, si
     # lo está se introduce la estadísitca.
@@ -300,9 +342,9 @@ class ArmItemNB(Arm):
     def modify_trainSet(self,trainSet):
         # Diccionario cuyas claves son los usuarios y los valores su media
         list_users = np.unique(trainSet[:,0])
-        dictAvg = {u:self.user_avg(trainSet,u) for u in list_users}
+        self.dictAvg = {u:self.user_avg(trainSet,u) for u in list_users}
 
-        func = lambda x: 1 if dictAvg.get(x[0]) <= x[2] else -1
+        func = lambda x: 1 if self.dictAvg.get(x[0]) <= x[2] else -1
         new_ratings = np.apply_along_axis(func,1,trainSet)
 
         trainSet[:,2] = new_ratings
@@ -313,6 +355,7 @@ class ArmItemNB(Arm):
         # Nuestro trainSet en esta recomendación son los items ya valorados por el usuario
         # El resto formarán el testSet
         # Comenzamos hallando los ratings binarios (-1,1) para los items visualizados por el target
+        print('1')
         mask = self.trainSet[:,0] == user
         itemRatings = (self.trainSet[mask,:])[:,[1,2]]
         itemSet = itemRatings[:,0]

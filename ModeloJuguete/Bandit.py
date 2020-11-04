@@ -8,6 +8,8 @@ import Arm
 
 from sklearn.model_selection import train_test_split
 
+import random
+
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
 # El trainSet debe ser dado en formato de matriz numPy.
@@ -32,7 +34,7 @@ class Bandit:
     def add_NB(self):
         self.arms.append(Arm.ArmNB())
 
-    # # Se añade un brazo con algoritmo Naive-Bayes item-based
+    # Se añade un brazo con algoritmo Naive-Bayes item-based
     def add_itemNB(self):
         cols = ['movieId','genres']
         moviesNB =  self.movies.extraeCols(cols)
@@ -44,3 +46,69 @@ class Bandit:
         pass
 
     # Queda run epoch
+    def run_epoch(self,epochs=500,trainSize=0.1):
+        index = 0
+        cols = ['userId','movieId','rating']
+        train, test = train_test_split(self.ratings.extraeCols(cols), train_size=trainSize)
+        for arm in self.arms:
+            arm.initSet(train)
+
+        listUsers = np.unique(train[:,0])
+        numUsers = len(listUsers)
+        random.shuffle(listUsers)
+
+        # Comienzan a correr las épocas
+        for _ in range(epochs):
+            target = listUsers[index]
+            arm = self.select_arm()
+
+            # Se recomiendo un item
+            item = arm.rec_item(target)
+
+            # Comprobamos si tenemos la recomendación del item en el testSet
+            mask = np.logical_and(test[:,0] == target,test[:,1] == item)
+            test, hit = test[np.logical_not(mask)], test[mask]
+
+            # Si hemos encontrado un resultado, lo valoramos como hit o fail
+            if(len(hit) > 0):
+                for a in self.arms:
+                    # Los trainSet se duplican con cada arm: PUNTO A MEJORAR
+                    arm.add_sample(hit[0])
+                # De momento, el umbral de valoración hit/fail es 3
+                if hit [0,2] >= 3:
+                    arm.hits += 1
+                else:
+                    arm.fails += 1
+            else:
+                for a in self.arms:
+                    arm.add_bad_sample(target,item)
+
+            index += 1
+            # Cuando agotamos los usuarios los barajamos y volvemos a empezar
+            if index == numUsers:
+                random.shuffle(listUsers)
+                index = 0
+
+# Algoritmo epsilon-greedy. Se elige el algoritmo con mayor tasa de hits
+# con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad
+# epsilon.
+class epsilonGreedy(Bandit):
+    def __init__(self,ratings,movies,epsilon=0.1):
+        super().__init__(ratings,movies)
+        self.epsilon = epsilon
+
+    # Devuelve el índice del brazo seleccionado según el algoritmo
+    def select_arm(self):
+        choices = [i for i in range(len(self.arms))]
+        accuracy = [arm.accuracy() for arm in self.arms]
+
+        # Hallamos el brazo de máxima precisión y lo separamos de choices
+        best = choices.pop(np.argmax(accuracy))
+
+        # Elegimos la mejor opción o una de las otras aleatoriamente según el criterio
+        # explicado antes
+        number = random.random()
+        if(number < self.epsilon):
+            return self.arms[random.choice(choices)]
+        else:
+            return self.arms[best]

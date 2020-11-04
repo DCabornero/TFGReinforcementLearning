@@ -116,3 +116,12 @@ class epsilonGreedy(Bandit):
             return self.arms[random.choice(choices)]
         else:
             return self.arms[best]
+
+class randomBandit(Bandit):
+    def __init__(self,ratings,movies):
+        super().__init__(ratings,movies)
+
+    # Devuelve el índice del brazo seleccionado según el algoritmo
+    def select_arm(self):
+        choices = [i for i in range(len(self.arms))]
+        return self.arms[random.choice(choices)]

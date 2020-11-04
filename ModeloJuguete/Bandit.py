@@ -48,6 +48,7 @@ class Bandit:
     # Queda run epoch
     def run_epoch(self,epochs=500,trainSize=0.1):
         index = 0
+        epoch = 0
         cols = ['userId','movieId','rating']
         train, test = train_test_split(self.ratings.extraeCols(cols), train_size=trainSize)
         for arm in self.arms:
@@ -58,7 +59,7 @@ class Bandit:
         random.shuffle(listUsers)
 
         # Comienzan a correr las épocas
-        for _ in range(epochs):
+        while epoch < epochs:
             target = listUsers[index]
             arm = self.select_arm()
 
@@ -67,15 +68,16 @@ class Bandit:
 
             # Comprobamos si tenemos la recomendación del item en el testSet
             mask = np.logical_and(test[:,0] == target,test[:,1] == item)
-            test, hit = test[np.logical_not(mask)], test[mask]
 
             # Si hemos encontrado un resultado, lo valoramos como hit o fail
-            if(len(hit) > 0):
+            if(np.count_nonzero(mask) > 0):
+                epoch += 1
+                test, hit = test[np.logical_not(mask)], test[mask]
                 for a in self.arms:
                     # Los trainSet se duplican con cada arm: PUNTO A MEJORAR
                     arm.add_sample(hit[0])
                 # De momento, el umbral de valoración hit/fail es 3
-                if hit [0,2] >= 3:
+                if hit [0,2] >= 2:
                     arm.hits += 1
                 else:
                     arm.fails += 1
@@ -88,6 +90,8 @@ class Bandit:
             if index == numUsers:
                 random.shuffle(listUsers)
                 index = 0
+
+            # epoch += 1
 
 # Algoritmo epsilon-greedy. Se elige el algoritmo con mayor tasa de hits
 # con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad

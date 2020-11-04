@@ -288,8 +288,7 @@ class ArmItemNB(Arm):
         super().__init__()
         self.items = np.unique(genres[:,0])
         self.num_items = len(self.items)
-        self.dataset = self.items.copy()
-        self.listCols = []
+        self.generos = pd.DataFrame(index=self.items, columns=[])
         self.add_genres(genres)
         self.clf = MultinomialNB()
 
@@ -309,14 +308,7 @@ class ArmItemNB(Arm):
     # Comprueba si un tag está ya introducido. Si no lo está se crea una columna, si
     # lo está se introduce la estadísitca.
     def check_genre(self,tag,item):
-        row = list(self.items).index(item)
-        if tag in self.listCols:
-            col = self.listCols.index(tag) + 1
-        else:
-            self.listCols.append(tag)
-            col = len(self.listCols)
-            self.dataset = np.column_stack((self.dataset,np.zeros(self.num_items)))
-        self.dataset[row,col] = 1
+        self.generos.at[item,tag] = 1
 
     # Dado un dataset de items y sus géneros separados por '|', devuelve la tabla
     # con cada genero distinto siendo una columno
@@ -324,19 +316,7 @@ class ArmItemNB(Arm):
         for row in genres:
             for tag in row[1].split('|'):
                 self.check_genre(tag,row[0])
-
-    # Dado un dataset de items y sus tags obtenemos la prolongación de la tabla que
-    # devuleve cada tag distinto en una columna
-    # def add_tags(self,tags,tPop):
-    #     # Nos quedamos con los tags que se han puesto en más de tag popularity películas
-    #     listTags, count = np.unique(tags[:,1],return_counts=True)
-    #     print(np.shape(listTags))
-    #     listTags = listTags[count >= 5] #Utilizando los params de unique posiblemente se puedan hacer cosillas
-    #     print(np.shape(listTags))
-    #
-    #     tagsMatrix = np.zeros(self.num_items,len(listTags))
-    #     # np.apply_along_axis(,0,tagsMatrix)
-    #     self.listCols += listTags
+        self.generos.fillna(0, inplace=True)
 
     # Modifica los ratings por 1 y -1 en función de si las valoraciones están por encima o debajo de la media
     def modify_trainSet(self,trainSet):
@@ -355,30 +335,27 @@ class ArmItemNB(Arm):
         # Nuestro trainSet en esta recomendación son los items ya valorados por el usuario
         # El resto formarán el testSet
         # Comenzamos hallando los ratings binarios (-1,1) para los items visualizados por el target
-        print('1')
         mask = self.trainSet[:,0] == user
         itemRatings = (self.trainSet[mask,:])[:,[1,2]]
         itemSet = itemRatings[:,0]
+        notItemSet = np.unique((self.trainSet[np.logical_not(mask),:])[:,1])
 
-        # Fabricamos nuestros conjuntos train y test
-        func = lambda x: True if x[0] in itemSet else False
-        mask = np.apply_along_axis(func,1,self.dataset) #NO HAY DATOS REPETIDO EN DATASET
+        ratingsDf = pd.DataFrame(index=itemSet,columns=[])
+        ratingsDf['ratings'] = itemRatings[:,1]
 
-        train = self.dataset[mask]
-        test = self.dataset[np.logical_not(mask)]
+        # Fabricamos nuestros conjuntos train y test, donde utilizamos para train todos los items valorados
+        # por el target
+        train = self.generos.loc[itemSet]
+        test = self.generos.loc[notItemSet]
 
         # Sabiendo que train y itemRatings tienen los mismos items, los ordenamos y
         # obtendremos el conjunto de entrenamiento y sus resultados
-        orderTrain = np.argsort(train,axis=0)[:,0]
-        X_train = (train[orderTrain])[:,1:]
-        orderRatings = np.argsort(itemRatings,axis=0)[:,0]
-        y_train = (itemRatings[orderRatings])[:,1]
-
-        X_test = test[:,1:]
+        train = train.join(ratingsDf,how='inner')
 
         # Entrenamos con scipy y obtenemos las predicciones
-        self.clf.fit(X_train,y_train)
-        preds = self.clf.predict_proba(X_test)
+        npTrain = train.to_numpy()
+        self.clf.fit(npTrain[:,:-1],npTrain[:,-1])
+        preds = self.clf.predict_proba(test.to_numpy())
 
         bestPred = np.argmax(preds[:,1])
-        return test[bestPred,0]
+        return test.index[bestPred]

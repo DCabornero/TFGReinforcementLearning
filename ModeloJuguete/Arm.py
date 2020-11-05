@@ -5,6 +5,8 @@ import pandas as pd
 from sklearn.preprocessing import normalize
 from sklearn.naive_bayes import MultinomialNB
 
+import time
+
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
 # El trainSet debe ser dado en formato de matriz numPy.
@@ -12,6 +14,7 @@ class Arm:
     def __init__(self):
         self.hits = 0
         self.fails = 0
+        self.misses = 0
 
     def accuracy(self):
         if self.hits + self.fails == 0:
@@ -54,7 +57,7 @@ class Arm:
     # Cálculo de la media de valoraciones de los usuarios
     def user_avgs(self, trainSet):
         listUsers = np.unique(trainSet[:,0])
-        return [self.user_avg(trainSet,user) for user in listUsers]
+        return np.array(list(map(lambda x: self.user_avg(trainSet,x),listUsers)))
 
 
 # Sistema de recomendación kNN, donde la similitud entre vecinos queda definida
@@ -67,9 +70,12 @@ class ArmkNN(Arm):
 
     def initSet(self,trainSet):
         self.trainSet = trainSet
+        avgs = self.user_avgs(trainSet)
+        self.userInfo = pd.DataFrame(np.transpose(avgs), columns=['avg'], index=np.unique(trainSet[:,0]))
 
     def add_sample(self,sample):
         self.trainSet = np.vstack((self.trainSet,sample))
+        self.userInfo.at[sample[0],'avg'] = self.user_avg(self.trainSet,sample[0])
 
     def add_bad_sample(self,user,item):
         self.add_sample([user,item,1])
@@ -99,47 +105,47 @@ class ArmkNN(Arm):
         return numer/(den1*den2)
 
     # Devuelve los usuarios que hayan valorado una cierta película
-    def get_users(self, trainSet, item):
-        mask = trainSet[:,1] == item
-        return trainSet[mask,:]
+    def get_users(self, item):
+        mask = self.trainSet[:,1] == item
+        return self.trainSet[mask,:]
 
     # Elimina los resultados relativos a un cierto usuario
-    def remove_user(self, trainSet, user):
-        mask = trainSet[:,0] != user
-        return trainSet[mask,:]
+    def remove_user(self, set, user):
+        mask = set[:,0] != user
+        return set[mask,:]
 
-    # Devuelve el rating predicho para un cierto item por un usuario
-    # usersInfo es un diccionario donde la clave es el usuario y el valor que contiene
-    # es un array con la media de ratings y la similitud con el objetivo
-    def rate(self, user, avguser, item, trainSet, usersInfo):
+    # Devuelve el rating predicho para un cierto item por un usuario target
+    # usersInfo es un DataFrame cuyas columnas son la media de valoraciones y la similitud
+    # con el target de cada usuario
+    def rate(self, user, item, usersInfo): # RECUERDO: HACER UN USERSINFO
         # Calculamos el conjunto de usuarios distintos del target que han visto el item
-        users = self.get_users(trainSet,item)
+        users = self.get_users(item)
         users = self.remove_user(users,user)
 
         # Si no hay suficientes vecinos, es una mala predicción
         if np.shape(users)[0] < self.k:
             return 0
 
-        # Para estos usuarios hacemos un array que contenga el usuario, su rating,
-        # su media y su similitud con el target
-        data = np.concatenate((users[:,[0,2]],[usersInfo.get(user) for user in users[:,0]]),axis=1)
+        # Hallamos los k usuarios con mayor similitud
+        candidates = usersInfo.loc[users[:,0]]
+        nearest = candidates.sort_values(by=['sim'],ascending=False).head(self.k)
 
-        # Ordenamos de menor a mayor las similitudes y nos quedamos con las k últimas
-        data = data[np.argsort(data[:,1]),:]
-        data = data[-self.k:,:]
+        # Añadimos al DataFrame el rating de dicho item y convertimos los datos a array numpy
+        nearest = nearest.join(pd.DataFrame(np.transpose(users[:,2]), columns=['rating'], index=users[:,0]))
+        data = nearest.to_numpy()
 
         # Hallamos numerador y denominador
-        numer = np.sum(np.multiply(data[:,3],data[:,1]-data[:,2]))
-        den = np.sum(np.abs(data[:,]))
+        numer = np.sum(np.multiply(data[:,1],data[:,2]-data[:,0]))
+        den = np.sum(np.abs(data[:,1]))
 
-        return avguser + numer/den
+        return usersInfo.at[user,'avg'] + numer/den
 
     # Función principal: recomienda un item a un cierto usuario
     def rec_item(self,user):
         userSet = self.user_set(self.trainSet,user)
 
         # Lista de usuarios sin el usuario target
-        listUsers = np.unique(self.trainSet[:,0])
+        listUsers = self.userInfo.index.to_numpy()
         listUsers = listUsers[listUsers != user]
 
         # Lista de items evaluados por el target
@@ -148,19 +154,19 @@ class ArmkNN(Arm):
         mask = np.logical_not(np.isin(self.trainSet[:,1],userItems))
         listItems = np.unique(self.trainSet[mask,1])
 
-        usersInfo = {}
-        avgUser = self.user_avg(self.trainSet,user)
+        usersInfo = self.userInfo.copy()
 
-        for u in listUsers:
-            userSet2 = self.user_set(self.trainSet,u)
-            avg2 = self.user_avg(self.trainSet,u)
-            usersInfo[u] = [avg2,self.Pearson(userSet,userSet2,avgUser,avg2)]
+        # Cálculo de similitudes
+        simsCol = \
+            np.array([self.Pearson(userSet,self.user_set(self.trainSet,u),usersInfo.at[user,'avg'],usersInfo.at[u,'avg']) for u in listUsers])
+        sims = pd.DataFrame(np.transpose(simsCol),columns=['sim'],index=listUsers)
+        usersInfo = usersInfo.join(sims)
 
         # Nos vamos quedando con el item con mejor rating
         item = -1
         rating = 0
         for i in listItems:
-            newRating = self.rate(user,avgUser,i,self.trainSet,usersInfo)
+            newRating = self.rate(user,i,usersInfo)
             if newRating > rating:
                 item = i
                 rating = newRating

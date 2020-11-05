@@ -71,19 +71,20 @@ class Bandit:
 
             # Si hemos encontrado un resultado, lo valoramos como hit o fail
             if(np.count_nonzero(mask) > 0):
-                epoch += 1
+                # epoch += 1
                 test, hit = test[np.logical_not(mask)], test[mask]
                 for a in self.arms:
                     # Los trainSet se duplican con cada arm: PUNTO A MEJORAR
-                    arm.add_sample(hit[0])
+                    a.add_sample(hit[0])
                 # De momento, el umbral de valoración hit/fail es 3
                 if hit [0,2] >= 2:
                     arm.hits += 1
                 else:
                     arm.fails += 1
             else:
+                arm.misses += 1
                 for a in self.arms:
-                    arm.add_bad_sample(target,item)
+                    a.add_bad_sample(target,item)
 
             index += 1
             # Cuando agotamos los usuarios los barajamos y volvemos a empezar
@@ -91,7 +92,7 @@ class Bandit:
                 random.shuffle(listUsers)
                 index = 0
 
-            # epoch += 1
+            epoch += 1
 
 # Algoritmo epsilon-greedy. Se elige el algoritmo con mayor tasa de hits
 # con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad

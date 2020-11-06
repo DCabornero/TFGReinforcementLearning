@@ -69,7 +69,7 @@ class ArmkNN(Arm):
         self.k = k
 
     def initSet(self,trainSet):
-        self.trainSet = trainSet
+        self.trainSet = trainSet.copy()
         avgs = self.user_avgs(trainSet)
         self.userInfo = pd.DataFrame(np.transpose(avgs), columns=['avg'], index=np.unique(trainSet[:,0]))
 
@@ -138,7 +138,12 @@ class ArmkNN(Arm):
         numer = np.sum(np.multiply(data[:,1],data[:,2]-data[:,0]))
         den = np.sum(np.abs(data[:,1]))
 
-        return usersInfo.at[user,'avg'] + numer/den
+        if den == 0:
+            return 0
+
+        res = usersInfo.at[user,'avg'] + numer/den
+
+        return res
 
     # Función principal: recomienda un item a un cierto usuario
     def rec_item(self,user):
@@ -177,7 +182,7 @@ class ArmkNN(Arm):
 class ArmNB(Arm):
     # El trainSet está compuesto por tres columnas: userId, itemId, rating
     def initSet(self,trainSet):
-        self.trainSet = trainSet
+        self.trainSet = trainSet.copy()
         self.ratings = np.unique(trainSet[:,2])
         self.num_ratings = len(self.ratings)
         self.items = np.unique(trainSet[:,1])
@@ -303,10 +308,10 @@ class ArmItemNB(Arm):
 
     def add_sample(self,sample):
         if sample[2] <= self.dictAvg.get(sample[0]):
-            sample[2] = -1
+            self.trainSet = np.vstack((self.trainSet,[sample[0],sample[1],-1]))
         else:
-            sample[2] = 1
-        self.trainSet = np.vstack((self.trainSet,sample))
+            self.trainSet = np.vstack((self.trainSet,[sample[0],sample[1],1]))
+
 
     def add_bad_sample(self,user,item):
         self.trainSet = np.vstack((self.trainSet,[user,item,-1]))
@@ -327,14 +332,15 @@ class ArmItemNB(Arm):
     # Modifica los ratings por 1 y -1 en función de si las valoraciones están por encima o debajo de la media
     def modify_trainSet(self,trainSet):
         # Diccionario cuyas claves son los usuarios y los valores su media
-        list_users = np.unique(trainSet[:,0])
-        self.dictAvg = {u:self.user_avg(trainSet,u) for u in list_users}
+        trainSetCopy = trainSet.copy()
+        list_users = np.unique(trainSetCopy[:,0])
+        self.dictAvg = {u:self.user_avg(trainSetCopy,u) for u in list_users}
 
         func = lambda x: 1 if self.dictAvg.get(x[0]) <= x[2] else -1
-        new_ratings = np.apply_along_axis(func,1,trainSet)
+        new_ratings = np.apply_along_axis(func,1,trainSetCopy)
 
-        trainSet[:,2] = new_ratings
-        return trainSet
+        trainSetCopy[:,2] = new_ratings
+        return trainSetCopy
 
     # Recomendación de un item a un cierto usuario target
     def rec_item(self,user):
@@ -344,15 +350,16 @@ class ArmItemNB(Arm):
         mask = self.trainSet[:,0] == user
         itemRatings = (self.trainSet[mask,:])[:,[1,2]]
         itemSet = itemRatings[:,0]
-        notItemSet = np.unique((self.trainSet[np.logical_not(mask),:])[:,1])
 
         ratingsDf = pd.DataFrame(index=itemSet,columns=[])
         ratingsDf['ratings'] = itemRatings[:,1]
 
         # Fabricamos nuestros conjuntos train y test, donde utilizamos para train todos los items valorados
         # por el target
+        maskTrain = self.generos.index.isin(itemSet)
         train = self.generos.loc[itemSet]
-        test = self.generos.loc[notItemSet]
+        maskTest = np.logical_not(maskTrain)
+        test = self.generos.loc[maskTest]
 
         # Sabiendo que train y itemRatings tienen los mismos items, los ordenamos y
         # obtendremos el conjunto de entrenamiento y sus resultados

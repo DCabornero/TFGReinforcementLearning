@@ -39,7 +39,6 @@ class Bandit:
         cols = ['movieId','genres']
         moviesNB =  self.movies.extraeCols(cols)
         self.arms.append(Arm.ArmItemNB(moviesNB))
-
     # Depende del algoritmo de selección concreto
     @abstractmethod
     def select_arm(self):
@@ -57,6 +56,7 @@ class Bandit:
         listUsers = np.unique(train[:,0])
         numUsers = len(listUsers)
         random.shuffle(listUsers)
+
 
         # Comienzan a correr las épocas
         while epoch < epochs:
@@ -77,7 +77,7 @@ class Bandit:
                     # Los trainSet se duplican con cada arm: PUNTO A MEJORAR
                     a.add_sample(hit[0])
                 # De momento, el umbral de valoración hit/fail es 3
-                if hit [0,2] >= 2:
+                if hit[0,2] >= 3:
                     arm.hits += 1
                 else:
                     arm.fails += 1
@@ -93,6 +93,7 @@ class Bandit:
                 index = 0
 
             epoch += 1
+
 
 # Algoritmo epsilon-greedy. Se elige el algoritmo con mayor tasa de hits
 # con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad

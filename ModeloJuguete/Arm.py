@@ -357,7 +357,7 @@ class ArmItemNB(Arm):
         # Fabricamos nuestros conjuntos train y test, donde utilizamos para train todos los items valorados
         # por el target
         maskTrain = self.generos.index.isin(itemSet)
-        train = self.generos.loc[itemSet]
+        train = self.generos.loc[maskTrain]
         maskTest = np.logical_not(maskTrain)
         test = self.generos.loc[maskTest]
 

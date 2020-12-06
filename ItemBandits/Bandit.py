@@ -134,29 +134,50 @@ class Bandit:
         plt.plot(results[0],results[1])
         plt.savefig('hits.png')
 
-# Algoritmo epsilon-greedy. Se elige el algoritmo con mayor tasa de hits
+# Algoritmo epsilon-greedy. Se elige el algoritmo con mayor recompensa esperada
 # con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad
 # epsilon.
 class epsilonGreedy(Bandit):
-    def __init__(self,ratings,epsilon=0.1):
+    # epsilon: probabilidad con la que se explora
+    # alpha: peso de la última recompensa dentro del promedio de recompensas (entre 0 y 1).
+    # Si no se indica, se realiza el algoritmo epsilon-greedy clásico
+    # initial: recompensa estimada de los brazos sin explorar (entre 0 y 1)
+    def __init__(self,ratings,epsilon=0.1,alpha=None,initial=0):
         super().__init__(ratings)
         self.epsilon = epsilon
+        self.alpha = alpha
+        self.initial = initial
 
     def add_itemArms(self):
         super().add_itemArms()
-        self.arms['Accuracy'] = np.zeros((len(self.arms.index)))
+        self.arms['Accuracy'] = np.ones((len(self.arms.index)))*self.initial
+
+    # Calcula la recompensa estimada tras un paso. Recibe la recompensa estimada
+    # actual, la nueva recompensa y el peso de dicha recompensa.
+    def calcula_recompensa(self,acc,award,alpha):
+        return acc + alpha*(award-acc)
+
+    # Actualiza la recompensa estimada del brazo sabiendo la nueva recompensa.
+    def new_reward(self,item,reward):
+        acc = self.arms.loc[item,'Accuracy']
+        if self.alpha:
+            alpha = self.alpha
+        else:
+            suma = np.sum(self.arms.loc[item,['Hits','Fails','Misses']])
+            alpha = 1/suma
+        self.arms.loc[item,'Accuracy'] = self.calcula_recompensa(acc,reward,alpha)
 
     def item_hit(self,item):
         super().item_hit(item)
-        suma = np.sum(self.arms.loc[item,['Hits','Fails']])
-        acc = self.arms.loc[item,'Accuracy']
-        self.arms.loc[item,'Accuracy'] = ((suma-1)/suma)*acc + 1/suma
+        self.new_reward(item,1)
 
     def item_fail(self,item):
         super().item_fail(item)
-        suma = np.sum(self.arms.loc[item,['Hits','Fails']])
-        acc = self.arms.loc[item,'Accuracy']
-        self.arms.loc[item,'Accuracy'] = ((suma-1)/suma)*acc - 1/suma
+        self.new_reward(item,0)
+
+    def item_miss(self,item):
+        super().item_miss(item)
+        self.new_reward(item,0)
 
     # Devuelve el índice del brazo seleccionado según el algoritmo
     def select_arm(self,viewed):

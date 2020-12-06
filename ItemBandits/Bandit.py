@@ -34,10 +34,9 @@ class Bandit:
         # Obtención de la lista de items
         itemsRep = self.ratings.extraeCols(['movieId'])[:,0]
         items = np.unique(itemsRep)
+        empty = np.zeros((len(items)))
 
-        funcs = list(map(lambda x: ArmItem(x), items))
-
-        self.arms = pd.DataFrame({'Arm': funcs}, index=items)
+        self.arms = pd.DataFrame({'Hits': empty, 'Fails': empty, 'Misses': empty}, index=items)
 
     # Crea un diccionario que tiene a los usuarios por key y un array de sus
     # items ya valorados como valor
@@ -52,12 +51,22 @@ class Bandit:
     # Devuelve la lista de los items no valorados sabiendo cuales se han valorado ya
     def available_arms(self,viewed):
         keys = self.arms.index
-        # availableKeys = np.setdiff1d(keys,viewed)
+        availableKeys = np.setdiff1d(keys,viewed,assume_unique=True)
 
-        arr = self.arms.to_numpy()[np.isin(keys,viewed,assume_unique=True,invert=True),0]
+        # arr = keys[np.isin(keys,viewed,assume_unique=True,invert=True)]
 
-        return arr
+        return availableKeys
 
+    # Métodos que incrementan el contador de hits, fails y misses. Susceptibles de sobreescribirse
+    # en clases heredadas
+    def item_miss(self,item):
+        self.arms.loc[item,'Misses'] += 1
+
+    def item_hit(self,item):
+        self.arms.loc[item,'Hits'] += 1
+
+    def item_fail(self,item):
+        self.arms.loc[item,'Fails'] += 1
 
     # Depende del algoritmo de selección concreto
     @abstractmethod
@@ -90,11 +99,9 @@ class Bandit:
         while epoch < epochs:
             target = listUsers[index]
             t0 = time()
-            arm = self.select_arm(viewed)
+            item = self.select_arm(viewed)
             t1 = time()
             self.times[0] += t1-t0
-            # Se recomiendo un item
-            item = arm.rec_item()
 
             # Comprobamos si tenemos la recomendación del item en el testSet
             mask = np.logical_and(test[:,0] == target,test[:,1] == item)
@@ -105,12 +112,12 @@ class Bandit:
                 test, hit = test[np.logical_not(mask)], test[mask]
                 # De momento, el umbral de valoración hit/fail es 3
                 if hit[0,2] >= 3:
-                    arm.hits += 1
+                    self.item_hit(item)
                     totalhits += 1
                 else:
-                    arm.fails += 1
+                    self.item_fail(item)
             else:
-                arm.misses += 1
+                self.item_miss(item)
                 viewed[target] = np.append(viewed[target],[item])
 
             results[0].append(epoch)
@@ -135,19 +142,34 @@ class epsilonGreedy(Bandit):
         super().__init__(ratings)
         self.epsilon = epsilon
 
+    def add_itemArms(self):
+        super().add_itemArms()
+        self.arms['Accuracy'] = np.zeros((len(self.arms.index)))
+
+    def item_hit(self,item):
+        super().item_hit(item)
+        suma = np.sum(self.arms.loc[item,['Hits','Fails']])
+        acc = self.arms.loc[item,'Accuracy']
+        self.arms.loc[item,'Accuracy'] = ((suma-1)/suma)*acc + 1/suma
+
+    def item_fail(self,item):
+        super().item_fail(item)
+        suma = np.sum(self.arms.loc[item,['Hits','Fails']])
+        acc = self.arms.loc[item,'Accuracy']
+        self.arms.loc[item,'Accuracy'] = ((suma-1)/suma)*acc - 1/suma
+
     # Devuelve el índice del brazo seleccionado según el algoritmo
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)
         t0 = time()
-        accuracy = np.array(list(map(lambda x: x.accuracy(),availableArms)))
+        accuracy = self.arms.loc[availableArms,'Accuracy'].to_numpy()
         t1 = time()
 
         # Hallamos el brazo de máxima precisión y lo separamos de choices
-        best = availableArms[np.argmax(accuracy)]
-        availableArms = np.delete(availableArms,np.argmax(accuracy))
+        bestIndex = np.argmax(accuracy)
+        best = availableArms[bestIndex]
+        availableArms = np.delete(availableArms,bestIndex)
         t2 = time()
-        # for i in range(len(self.times)):
-        #     self.times[i] += t[i+1] - t[i]
 
         self.times[1] += t1 - t0
         self.times[2] += t2 - t1
@@ -159,6 +181,7 @@ class epsilonGreedy(Bandit):
             return np.random.choice(availableArms)
         else:
             return best
+
 
 # Bandido que escoge un brazo al azar
 class randomBandit(Bandit):
@@ -181,5 +204,9 @@ class thompsonSampling(Bandit):
     # Devuelve el índice del brazo seleccionado según el algoritmo
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)
-        numbers = np.array([np.random.beta(arm.hits+self.alpha,arm.fails+self.beta) for arm in availableArms])
+        results = self.arms.loc[availableArms,['Hits','Fails']]
+        results = results.to_numpy()
+        alpha = results[:,0] + self.alpha
+        beta = results[:,1] + self.beta
+        numbers = np.random.beta(alpha,beta)
         return availableArms[np.argmax(numbers)]

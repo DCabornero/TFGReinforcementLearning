@@ -22,6 +22,7 @@ class EpsilonGreedy(Bandit):
 
     def add_itemArms(self):
         super().add_itemArms()
+        self.arms['Epochs'] = np.zeros((len(self.arms.index)))
         self.arms['Accuracy'] = np.ones((len(self.arms.index)))*self.initial
 
     # Calcula la recompensa estimada tras un paso. Recibe la recompensa estimada
@@ -35,9 +36,13 @@ class EpsilonGreedy(Bandit):
         if self.alpha:
             alpha = self.alpha
         else:
-            suma = np.sum(self.arms.loc[item,['Hits','Fails','Misses']])
-            alpha = 1/suma
+            suma = self.arms.loc[item,'Epochs']
+            if suma == 0:
+                alpha = 1
+            else:
+                alpha = 1/suma
         self.arms.loc[item,'Accuracy'] = self.calcula_recompensa(acc,reward,alpha)
+        self.arms.loc[item,'Epochs'] += 1
 
     def item_hit(self,item):
         super().item_hit(item)

@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 from Datos import Datos
-from Arm import ArmItem
 
 from sklearn.model_selection import train_test_split
 
@@ -22,17 +21,18 @@ class Bandit:
     # - ID del usuario (default: userId)
     # - ID del item (default: itemId)
     # - valorción que ha dado dicho usuario a dicho item (default: rating)
-    # movies: CSV que contiene la base de datos de los items con mínimo dos datos:
-    # - ID del item (llamado itemId)
-    # - nombre de los tags del item separados por barras (default: genres)
-    def __init__(self,ratings):
+    # userName: nombre de la columna que contiene los userID
+    # itemName: nombre de la columna que contiene los itemID
+    # rating: nombre de la columna que contiene los ratings
+    def __init__(self,ratings,userName='userId',itemName='movieId',rating='rating'):
         self.ratings = Datos(ratings)
         self.arms = None
         self.times = np.zeros((3))
+        self.names = [userName,itemName,rating]
 
     def add_itemArms(self):
         # Obtención de la lista de items
-        itemsRep = self.ratings.extraeCols(['movieId'])[:,0]
+        itemsRep = self.ratings.extraeCols([self.names[1]])[:,0]
         items = np.unique(itemsRep)
         empty = np.zeros((len(items)))
 
@@ -73,23 +73,22 @@ class Bandit:
     def select_arm(self):
         pass
 
-    # Queda run epoch
-    def run_epoch(self,epochs=500,trainSize=0.1):
+    # Corre un cierto número de épocas con un algoritmo especificado.
+    # Devuelve un array con dos listas: la primera son las épocas y la segunda
+    # el recall relativo en cada época (que corresponde con la gráfica mostrada)
+    def run_epoch(self,epochs=500,trainSize=0.1,plot=plt):
         index = 0
         epoch = 0
-        totalhits = 0
+        numhits = 0
 
-
-        cols = ['userId','movieId','rating']
-        train, test = train_test_split(self.ratings.extraeCols(cols), train_size=trainSize)
+        train, test = train_test_split(self.ratings.extraeCols(self.names), train_size=trainSize)
 
         viewed = self.get_rated(train)
         self.add_itemArms()
-
-        plt.close()
-        plt.xlabel('Épocas')
-        plt.ylabel('Aciertos')
         results = [[],[]]
+
+        # Número de hits por descubrir
+        totalhits = np.shape(test[test[:,2]>=3])[0]
 
         listUsers = np.unique(train[:,0])
         numUsers = len(listUsers)
@@ -113,7 +112,7 @@ class Bandit:
                 # De momento, el umbral de valoración hit/fail es 3
                 if hit[0,2] >= 3:
                     self.item_hit(item)
-                    totalhits += 1
+                    numhits += 1
                 else:
                     self.item_fail(item)
             else:
@@ -121,7 +120,7 @@ class Bandit:
                 viewed[target] = np.append(viewed[target],[item])
 
             results[0].append(epoch)
-            results[1].append(totalhits)
+            results[1].append(numhits/totalhits)
 
             index += 1
             # Cuando agotamos los usuarios los barajamos y volvemos a empezar
@@ -131,103 +130,7 @@ class Bandit:
 
             epoch += 1
         print(self.times)
-        plt.plot(results[0],results[1])
-        plt.savefig('hits.png')
+        if plot:
+            plot.plot(results[0],results[1])
 
-# Algoritmo epsilon-greedy. Se elige el algoritmo con mayor recompensa esperada
-# con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad
-# epsilon.
-class epsilonGreedy(Bandit):
-    # epsilon: probabilidad con la que se explora
-    # alpha: peso de la última recompensa dentro del promedio de recompensas (entre 0 y 1).
-    # Si no se indica, se realiza el algoritmo epsilon-greedy clásico
-    # initial: recompensa estimada de los brazos sin explorar (entre 0 y 1)
-    def __init__(self,ratings,epsilon=0.1,alpha=None,initial=0):
-        super().__init__(ratings)
-        self.epsilon = epsilon
-        self.alpha = alpha
-        self.initial = initial
-
-    def add_itemArms(self):
-        super().add_itemArms()
-        self.arms['Accuracy'] = np.ones((len(self.arms.index)))*self.initial
-
-    # Calcula la recompensa estimada tras un paso. Recibe la recompensa estimada
-    # actual, la nueva recompensa y el peso de dicha recompensa.
-    def calcula_recompensa(self,acc,award,alpha):
-        return acc + alpha*(award-acc)
-
-    # Actualiza la recompensa estimada del brazo sabiendo la nueva recompensa.
-    def new_reward(self,item,reward):
-        acc = self.arms.loc[item,'Accuracy']
-        if self.alpha:
-            alpha = self.alpha
-        else:
-            suma = np.sum(self.arms.loc[item,['Hits','Fails','Misses']])
-            alpha = 1/suma
-        self.arms.loc[item,'Accuracy'] = self.calcula_recompensa(acc,reward,alpha)
-
-    def item_hit(self,item):
-        super().item_hit(item)
-        self.new_reward(item,1)
-
-    def item_fail(self,item):
-        super().item_fail(item)
-        self.new_reward(item,0)
-
-    def item_miss(self,item):
-        super().item_miss(item)
-        self.new_reward(item,0)
-
-    # Devuelve el índice del brazo seleccionado según el algoritmo
-    def select_arm(self,viewed):
-        availableArms = self.available_arms(viewed)
-        t0 = time()
-        accuracy = self.arms.loc[availableArms,'Accuracy'].to_numpy()
-        t1 = time()
-
-        # Hallamos el brazo de máxima precisión y lo separamos de choices
-        bestIndex = np.argmax(accuracy)
-        best = availableArms[bestIndex]
-        availableArms = np.delete(availableArms,bestIndex)
-        t2 = time()
-
-        self.times[1] += t1 - t0
-        self.times[2] += t2 - t1
-
-        # Elegimos la mejor opción o una de las otras aleatoriamente según el criterio
-        # explicado antes
-        number = random.random()
-        if(number < self.epsilon):
-            return np.random.choice(availableArms)
-        else:
-            return best
-
-
-# Bandido que escoge un brazo al azar
-class randomBandit(Bandit):
-    def __init__(self,ratings):
-        super().__init__(ratings)
-
-    # Sabiendo los items que ya ha visto el usuario, se devuleve otro aleatoriamente
-    def select_arm(self,viewed):
-        availableArms = self.available_arms(viewed)
-        return np.random.choice(availableArms)
-
-# Bandido que escoge un brazo al azar en función de una distribución beta
-# dependiente del número de aciertos y errores de cada brazo
-class thompsonSampling(Bandit):
-    def __init__(self,ratings,alpha=0.01,beta=0.01):
-        super().__init__(ratings)
-        self.alpha = alpha
-        self.beta = beta
-
-    # Devuelve el índice del brazo seleccionado según el algoritmo
-    def select_arm(self,viewed):
-        availableArms = self.available_arms(viewed)
-        results = self.arms.loc[availableArms,['Hits','Fails']]
-        results = results.to_numpy()
-        alpha = results[:,0] + self.alpha
-        beta = results[:,1] + self.beta
-        numbers = np.random.beta(alpha,beta)
-        return availableArms[np.argmax(numbers)]
+        return results

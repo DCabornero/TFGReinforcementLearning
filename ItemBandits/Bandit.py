@@ -98,7 +98,7 @@ class Bandit:
         while epoch < epochs:
             target = listUsers[index]
             t0 = time()
-            item = self.select_arm(viewed)
+            item = self.select_arm(viewed[target])
             t1 = time()
             self.times[0] += t1-t0
 
@@ -117,7 +117,7 @@ class Bandit:
                     self.item_fail(item)
             else:
                 self.item_miss(item)
-                viewed[target] = np.append(viewed[target],[item])
+            viewed[target] = np.append(viewed[target],[item])
 
             results[0].append(epoch)
             results[1].append(numhits/totalhits)

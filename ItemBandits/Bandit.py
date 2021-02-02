@@ -24,15 +24,21 @@ class Bandit:
     # userName: nombre de la columna que contiene los userID
     # itemName: nombre de la columna que contiene los itemID
     # rating: nombre de la columna que contiene los ratings
-    def __init__(self,ratings,userName='userId',itemName='movieId',rating='rating'):
+    def __init__(self,ratings,userName='userId',itemName='movieId',ratingName='rating'):
         self.ratings = Datos(ratings)
         self.arms = None
         self.times = np.zeros((3))
-        self.names = [userName,itemName,rating]
+        self.names = {'user':userName,
+                      'item':itemName,
+                      'rating': ratingName}
+        # Obtención del rating medio (medio camino entre máximo y mínimo)
+        ratings = np.unique(self.ratings.extraeCols(ratingName))
+        self.avgRating = np.mean(ratings)
+
 
     def add_itemArms(self):
         # Obtención de la lista de items
-        itemsRep = self.ratings.extraeCols([self.names[1]])[:,0]
+        itemsRep = self.ratings.extraeCols([self.names['item']])[:,0]
         items = np.unique(itemsRep)
         empty = np.zeros((len(items)))
 
@@ -81,14 +87,15 @@ class Bandit:
         epoch = 0
         numhits = 0
 
-        train, test = train_test_split(self.ratings.extraeCols(self.names), train_size=trainSize)
+        cols = [self.names.get(x) for x in ['user','item','rating']]
+        train, test = train_test_split(self.ratings.extraeCols(cols), train_size=trainSize)
 
         viewed = self.get_rated(train)
         self.add_itemArms()
         results = [[],[]]
 
         # Número de hits por descubrir
-        totalhits = np.shape(test[test[:,2]>=3])[0]
+        totalhits = np.shape(test[test[:,2]>=self.avgRating])[0]
 
         listUsers = np.unique(train[:,0])
         numUsers = len(listUsers)
@@ -109,8 +116,7 @@ class Bandit:
             if(np.count_nonzero(mask) > 0):
                 # epoch += 1
                 test, hit = test[np.logical_not(mask)], test[mask]
-                # De momento, el umbral de valoración hit/fail es 3
-                if hit[0,2] >= 3:
+                if hit[0,2] >= self.avgRating:
                     self.item_hit(item)
                     numhits += 1
                 else:
@@ -130,7 +136,12 @@ class Bandit:
 
             epoch += 1
         print(self.times)
-        if plot:
-            plot.plot(results[0],results[1])
+        self.results = results
 
         return results
+
+    def plot_results(self):
+        if self.results:
+            plt.plot(self.results[0],self.results[1])
+        else:
+            print('No hay resultados para graficar.')

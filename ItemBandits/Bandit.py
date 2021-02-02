@@ -23,34 +23,39 @@ class Bandit:
     # - valorción que ha dado dicho usuario a dicho item (default: rating)
     # userName: nombre de la columna que contiene los userID
     # itemName: nombre de la columna que contiene los itemID
-    # rating: nombre de la columna que contiene los ratings
-    def __init__(self,ratings,userName='userId',itemName='movieId',ratingName='rating'):
+    # ratingName: nombre de la columna que contiene los ratings
+    # timeName: timestamp de cada valoracion
+    def __init__(self,ratings,userName='userId',itemName='movieId',ratingName='rating', timeName='timestamp'):
         self.ratings = Datos(ratings)
+        self.listUsers = np.unique(self.ratings.extraeCols([userName]))
+        self.listItems = np.unique(self.ratings.extraeCols([itemName]))
+
         self.arms = None
+        self.results = None
         self.times = np.zeros((3))
         self.names = {'user':userName,
                       'item':itemName,
-                      'rating': ratingName}
+                      'rating': ratingName,
+                      'time': timeName}
         # Obtención del rating medio (medio camino entre máximo y mínimo)
         ratings = np.unique(self.ratings.extraeCols(ratingName))
         self.avgRating = np.mean(ratings)
 
 
     def add_itemArms(self):
-        # Obtención de la lista de items
-        itemsRep = self.ratings.extraeCols([self.names['item']])[:,0]
-        items = np.unique(itemsRep)
-        empty = np.zeros((len(items)))
-
-        self.arms = pd.DataFrame({'Hits': empty, 'Fails': empty, 'Misses': empty}, index=items)
+        empty = np.zeros((len(self.listItems)))
+        self.arms = pd.DataFrame({'Hits': empty, 'Fails': empty, 'Misses': empty}, index=self.listItems)
 
     # Crea un diccionario que tiene a los usuarios por key y un array de sus
     # items ya valorados como valor
     def get_rated(self,trainSet):
         viewed = {}
-        listUsers = np.unique(trainSet[:,0])
-        for u in listUsers:
-            itemsRated = trainSet[trainSet[:,0] == u,1]
+        empty = len(trainSet) == 0
+        for u in self.listUsers:
+            if empty:
+                itemsRated = np.array([])
+            else:
+                itemsRated = trainSet[trainSet[:,0] == u,1]
             viewed[u] = itemsRated
         return viewed
 
@@ -82,13 +87,22 @@ class Bandit:
     # Corre un cierto número de épocas con un algoritmo especificado.
     # Devuelve un array con dos listas: la primera son las épocas y la segunda
     # el recall relativo en cada época (que corresponde con la gráfica mostrada)
-    def run_epoch(self,epochs=500,trainSize=0.1,plot=plt):
+    # Si shuffle está a False, el conjunto de entrenamiento serán los elementos más antiguos
+    def run_epoch(self,epochs=500,trainSize=0.1,shuffle=True):
         index = 0
         epoch = 0
         numhits = 0
 
-        cols = [self.names.get(x) for x in ['user','item','rating']]
-        train, test = train_test_split(self.ratings.extraeCols(cols), train_size=trainSize)
+        # Ordenación por timestamp
+        cols = [self.names[x] for x in ['user','item','rating']]
+        ordered_index = np.argsort(self.ratings.extraeCols([self.names['time']])[:,0])
+        ord_ratings = self.ratings.extraeCols(cols)[ordered_index]
+        if trainSize > 0:
+            train, test = train_test_split(ord_ratings, train_size=trainSize, shuffle=shuffle)
+        else:
+            train = np.array([])
+            test = ord_ratings
+
 
         viewed = self.get_rated(train)
         self.add_itemArms()
@@ -97,13 +111,12 @@ class Bandit:
         # Número de hits por descubrir
         totalhits = np.shape(test[test[:,2]>=self.avgRating])[0]
 
-        listUsers = np.unique(train[:,0])
-        numUsers = len(listUsers)
-        random.shuffle(listUsers)
+        numUsers = len(self.listUsers)
+        random.shuffle(self.listUsers)
 
         # Comienzan a correr las épocas
         while epoch < epochs:
-            target = listUsers[index]
+            target = self.listUsers[index]
             t0 = time()
             item = self.select_arm(viewed[target])
             t1 = time()
@@ -131,7 +144,7 @@ class Bandit:
             index += 1
             # Cuando agotamos los usuarios los barajamos y volvemos a empezar
             if index == numUsers:
-                random.shuffle(listUsers)
+                random.shuffle(self.listUsers)
                 index = 0
 
             epoch += 1

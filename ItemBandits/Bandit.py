@@ -81,7 +81,7 @@ class Bandit:
 
     # Depende del algoritmo de selección concreto
     @abstractmethod
-    def select_arm(self):
+    def select_arm(self,viewed):
         pass
 
     # Corre un cierto número de épocas con un algoritmo especificado.

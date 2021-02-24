@@ -30,21 +30,25 @@ class GradientBandit(Bandit):
 
     def select_arm(self,viewed):
         self.availableArms = self.available_arms(viewed)
-        probs = self.arms.loc[availableArms,['Prob']].to_numpy()[:,0]
+        probs = self.arms.loc[self.availableArms,['Prob']].to_numpy()[:,0]
         probs /= np.sum(probs)
 
-        chosen = np.random.choice(availableArms,p=probs)
+        chosen = np.random.choice(self.availableArms,p=probs)
         return chosen
 
     # Estaría bien actualizar solo las que entran en el bombo
     def update_preference(self,item,reward):
+        probs = self.arms.loc[self.availableArms,['Prob']].to_numpy()[:,0]
 
+        auxVector = np.zeros((len(self.availableArms)))
+        auxVector[np.where(self.availableArms == item)] = 1
 
-        auxVector = np.zeros((len(self.arms.index)))
-        auxVector[np.where(self.arms.index == item)] = 1
+        grad = self.alpha*(reward-self.avgReward)*(probs-auxVector)
+        self.arms.loc[self.availableArms,['Preference']] -= grad.reshape(len(grad),1)
 
-        self.arms['Preference'] -= self.alpha*(reward-self.avgReward)*(self.arms['Prob']-auxVector)
-        self.arms['Prob'] = softmax(self.arms['Preference'])
+        newProbs = softmax(self.arms.loc[self.availableArms,['Preference']].to_numpy()[:,0])
+        self.arms.loc[self.availableArms,['Prob']] = newProbs.reshape(len(newProbs),1)
+
         self.epochs += 1
         if self.avgRate:
             self.avgReward = (1-self.avgRate)*self.avgReward + self.avgRate*reward

@@ -17,19 +17,11 @@ from time import time
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
 # El trainSet debe ser dado en formato de matriz numPy.
 class Bandit:
-    # ratings: CSV que contiene todos los ejemplos posibles con mínimo tres columnas:
-    # - ID del usuario (default: userId)
-    # - ID del item (default: itemId)
-    # - valorción que ha dado dicho usuario a dicho item (default: rating)
     # userName: nombre de la columna que contiene los userID
     # itemName: nombre de la columna que contiene los itemID
     # ratingName: nombre de la columna que contiene los ratings
     # timeName: timestamp de cada valoracion
-    def __init__(self,ratings,userName='userId',itemName='movieId',ratingName='rating', timeName='timestamp'):
-        self.ratings = Datos(ratings)
-        self.listUsers = np.unique(self.ratings.extraeCols([userName]))
-        self.listItems = np.unique(self.ratings.extraeCols([itemName]))
-
+    def __init__(self,userName='userId',itemName='movieId',ratingName='rating', timeName='timestamp'):
         self.arms = None
         self.results = None
         self.times = np.zeros((3))
@@ -37,10 +29,19 @@ class Bandit:
                       'item':itemName,
                       'rating': ratingName,
                       'time': timeName}
-        # Obtención del rating medio (medio camino entre máximo y mínimo)
-        ratings = np.unique(self.ratings.extraeCols(ratingName))
-        self.avgRating = np.mean(ratings)
 
+    # ratings: CSV que contiene todos los ejemplos posibles con mínimo tres columnas:
+    # - ID del usuario (default: userId)
+    # - ID del item (default: itemId)
+    # - valorción que ha dado dicho usuario a dicho item (default: rating)
+    def read_csv(self,ratings):
+        self.ratings = Datos(ratings)
+        self.listUsers = np.unique(self.ratings.extraeCols([self.names['user']]))
+        self.listItems = np.unique(self.ratings.extraeCols([self.names['item']]))
+
+        # Obtención del rating medio (medio camino entre máximo y mínimo)
+        ratings = np.unique(self.ratings.extraeCols(self.names['rating']))
+        self.avgRating = np.mean(ratings)
 
     def add_itemArms(self):
         empty = np.zeros((len(self.listItems)))

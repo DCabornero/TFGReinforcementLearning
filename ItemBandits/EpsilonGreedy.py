@@ -14,8 +14,8 @@ class EpsilonGreedy(Bandit):
     # alpha: peso de la última recompensa dentro del promedio de recompensas (entre 0 y 1).
     # Si no se indica, se realiza el algoritmo epsilon-greedy clásico
     # initial: recompensa estimada de los brazos sin explorar (entre 0 y 1)
-    def __init__(self,ratings,epsilon=0.1,alpha=None,initial=0):
-        super().__init__(ratings)
+    def __init__(self,epsilon=0.1,alpha=None,initial=0):
+        super().__init__()
         self.epsilon = epsilon
         self.alpha = alpha
         self.initial = initial

@@ -23,8 +23,8 @@ disc_func = {'Beta':False, 'Bernouilli': True}
 # Bandido que escoge un brazo al azar en función de una distribución
 # dependiente del número de aciertos y errores de cada brazo
 class ThompsonSampling(Bandit):
-    def __init__(self,ratings,func='Beta',alpha=1,beta=1):
-        super().__init__(ratings)
+    def __init__(self,func='Beta',alpha=1,beta=1):
+        super().__init__()
         self.alpha = alpha
         self.beta = beta
         self.func = dict_func.get(func)

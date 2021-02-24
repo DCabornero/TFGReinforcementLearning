@@ -6,8 +6,8 @@ import random
 from EpsilonGreedy import EpsilonGreedy
 
 class UCB(EpsilonGreedy):
-    def __init__(self,ratings,alpha=None,c=2):
-        super().__init__(ratings,alpha=alpha)
+    def __init__(self,alpha=None,c=2):
+        super().__init__(alpha=alpha)
         self.c = c
 
     def add_itemArms(self):

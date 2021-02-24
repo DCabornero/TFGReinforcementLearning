@@ -10,8 +10,8 @@ from Bandit import Bandit
 # Algoritmo exp3.
 class Exp3(Bandit):
     # alpha: constante de exploración
-    def __init__(self,ratings,alpha=0.1):
-        super().__init__(ratings)
+    def __init__(self,alpha=0.1):
+        super().__init__()
         self.alpha = alpha
 
     def add_itemArms(self):

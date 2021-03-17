@@ -17,22 +17,45 @@ class Exp3(Bandit):
     def add_itemArms(self):
         super().add_itemArms()
         # Valor de pesos para cada brazo
-        self.arms['Weight'] = np.ones((len(self.arms.index)))
+        # self.arms['Weight'] = np.ones((len(self.arms.index)))
+        # Valor de recompensa esperada para cada brazo
+        self.arms['Reward'] = np.zeros((len(self.arms.index)))
+        self.oldEpsilon = 1/len(self.arms.index)
+        self.epochs = 0
+
+    # def select_arm(self,viewed):
+    #     availableArms = self.available_arms(viewed)
+    #     weights = self.arms.loc[availableArms,['Weight']].to_numpy()[:,0]
+    #     totalWeights = np.sum(weights)
+    #
+    #     probs = (1-self.alpha)*weights/totalWeights + self.alpha/len(availableArms)
+    #     chosen = np.random.choice(np.arange(len(availableArms)),p=probs)
+    #     self.probChosen = probs[chosen]
+    #     return availableArms[chosen]
 
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)
-        weights = self.arms.loc[availableArms,['Weight']].to_numpy()[:,0]
-        totalWeights = np.sum(weights)
+        numArms = len(availableArms)
+        self.epochs += 1
+        # Nuevo epsilon
+        epsilon = np.min([1/numArms,np.sqrt(np.log(numArms)/numArms*self.epochs)])
+        # Cálculo de probabilidades
+        rewards = self.arms.loc[availableArms,'Reward'].to_numpy()
+        values = np.exp(self.oldEpsilon*rewards)
+        probs = (1-numArms*epsilon)*values/np.sum(values) + epsilon
+        # Acutalización de oldEpsilon
+        self.oldEpsilon = epsilon
+        # Elección de brazo
+        ind = np.random.choice([i for i in range(len(availableArms))],p=probs)
+        self.prob = probs[ind]
+        return availableArms[ind]
 
-        probs = (1-self.alpha)*weights/totalWeights + self.alpha/len(availableArms)
-        chosen = np.random.choice(np.arange(len(availableArms)),p=probs)
-        self.probChosen = probs[chosen]
-        return availableArms[chosen]
 
     def update_preference(self,item,reward):
-        peso = self.arms.loc[item,'Weight']
-        exponente = (self.alpha/len(self.listItems))*(reward/self.probChosen)
-        self.arms.loc[item,'Weight'] = peso*np.exp(exponente)
+        # peso = self.arms.loc[item,'Weight']
+        # exponente = (self.alpha/len(self.listItems))*(reward/self.probChosen)
+        # self.arms.loc[item,'Weight'] = peso*np.exp(exponente)
+        self.arms.at[item,'Reward'] += reward/self.prob
 
     def item_hit(self,item):
         super().item_hit(item)

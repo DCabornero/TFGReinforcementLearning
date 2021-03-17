@@ -10,6 +10,8 @@ from sklearn.model_selection import train_test_split
 
 import random
 
+import matplotlib.pyplot as plt
+
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
 # El trainSet debe ser dado en formato de matriz numPy.
@@ -48,10 +50,16 @@ class Bandit:
     def run_epoch(self,epochs=500,trainSize=0.1):
         index = 0
         epoch = 0
+        totalhits = 0
         cols = ['userId','movieId','rating']
         train, test = train_test_split(self.ratings.extraeCols(cols), train_size=trainSize)
         for arm in self.arms:
             arm.initSet(train)
+
+        plt.close()
+        plt.xlabel('Épocas')
+        plt.ylabel('Aciertos')
+        results = [[],[]]
 
         listUsers = np.unique(train[:,0])
         numUsers = len(listUsers)
@@ -79,12 +87,15 @@ class Bandit:
                 # De momento, el umbral de valoración hit/fail es 3
                 if hit[0,2] >= 3:
                     arm.hits += 1
+                    totalhits += 1
                 else:
                     arm.fails += 1
             else:
                 arm.misses += 1
                 for a in self.arms:
                     a.add_bad_sample(target,item)
+            results[0].append(epoch)
+            results[1].append(totalhits)
 
             index += 1
             # Cuando agotamos los usuarios los barajamos y volvemos a empezar
@@ -93,7 +104,8 @@ class Bandit:
                 index = 0
 
             epoch += 1
-
+        plt.plot(results[0],results[1])
+        plt.savefig('hits.png')
 
 # Algoritmo epsilon-greedy. Se elige el algoritmo con mayor tasa de hits
 # con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad
@@ -119,6 +131,7 @@ class epsilonGreedy(Bandit):
         else:
             return self.arms[best]
 
+# Bandido que escoge un brazo al azar
 class randomBandit(Bandit):
     def __init__(self,ratings,movies):
         super().__init__(ratings,movies)
@@ -127,3 +140,16 @@ class randomBandit(Bandit):
     def select_arm(self):
         choices = [i for i in range(len(self.arms))]
         return self.arms[random.choice(choices)]
+
+# Bandido que escoge un brazo al azar en función de una distribución beta
+# dependiente del número de aciertos y errores de cada brazo
+class thompsonSampling(Bandit):
+    def __init__(self,ratings,movies,alpha=0.01,beta=0.01):
+        super().__init__(ratings,movies)
+        self.alpha = alpha
+        self.beta = beta
+
+    # Devuelve el índice del brazo seleccionado según el algoritmo
+    def select_arm(self):
+        numbers = [np.random.beta(arm.hits+self.alpha,arm.fails+self.beta) for arm in self.arms]
+        return self.arms[np.argmax(numbers)]

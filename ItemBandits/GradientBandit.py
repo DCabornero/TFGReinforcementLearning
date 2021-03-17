@@ -36,7 +36,7 @@ class GradientBandit(Bandit):
         chosen = np.random.choice(self.availableArms,p=probs)
         return chosen
 
-    # Estaría bien actualizar solo las que entran en el bombo
+
     def update_preference(self,item,reward):
         probs = self.arms.loc[self.availableArms,['Prob']].to_numpy()[:,0]
 

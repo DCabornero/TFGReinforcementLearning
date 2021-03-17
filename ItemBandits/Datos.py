@@ -22,17 +22,17 @@ class Datos:
         self.cols = self.df.columns.values
 
         #Inicialización nominalAtributos
-        self.types = self.df.dtypes
-        types = self.types.array
-        self.nominalAtributos = [isNominal(x) for x in types]
+        # self.types = self.df.dtypes
+        # types = self.types.array
+        # self.nominalAtributos = [isNominal(x) for x in types]
 
-        if nominal:
-            #Inicialización diccionario
-            self.diccionario = [encodeAtribute(self.datos[:,i]) if val else {} for i, val in enumerate(self.nominalAtributos)]
-
-            for i in range(np.shape(self.datos)[1]):
-                if self.nominalAtributos[i]:
-                    self.datos[:,i] = [self.diccionario[i].get(val) for val in self.datos[:,i]]
+        # if nominal:
+        #     #Inicialización diccionario
+        #     self.diccionario = [encodeAtribute(self.datos[:,i]) if val else {} for i, val in enumerate(self.nominalAtributos)]
+        #
+        #     for i in range(np.shape(self.datos)[1]):
+        #         if self.nominalAtributos[i]:
+        #             self.datos[:,i] = [self.diccionario[i].get(val) for val in self.datos[:,i]]
 
     def extraeDatos(self, idx):
         return self.datos[ idx ]

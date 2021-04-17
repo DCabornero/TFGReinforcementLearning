@@ -1,5 +1,5 @@
-from Bandit import Bandit
-from Context import Context
+from abstract.Bandit import Bandit
+from abstract.Context import Context
 
 import numpy as np
 import pandas as pd

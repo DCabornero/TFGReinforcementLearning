@@ -12,6 +12,7 @@ import random
 import matplotlib.pyplot as plt
 
 from time import time
+from tqdm.notebook import tqdm
 
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
@@ -82,7 +83,7 @@ class Bandit:
 
     # Depende del algoritmo de selección concreto
     @abstractmethod
-    def select_arm(self,viewed):
+    def select_arm(self,viewed,user=None):
         pass
 
     # Corre un cierto número de épocas con un algoritmo especificado.
@@ -93,6 +94,7 @@ class Bandit:
         index = 0
         epoch = 0
         numhits = 0
+        bar = tqdm(total=epochs)
 
         # Ordenación por timestamp
         cols = [self.names[x] for x in ['user','item','rating']]
@@ -117,14 +119,15 @@ class Bandit:
 
         # Comienzan a correr las épocas
         while epoch < epochs:
-            target = self.listUsers[index]
+            bar.update()
+            self.target = self.listUsers[index]
             t0 = time()
-            item = self.select_arm(viewed[target])
+            item = self.select_arm(viewed[self.target])
             t1 = time()
             self.times[0] += t1-t0
 
             # Comprobamos si tenemos la recomendación del item en el testSet
-            mask = np.logical_and(test[:,0] == target,test[:,1] == item)
+            mask = np.logical_and(test[:,0] == self.target,test[:,1] == item)
 
             # Si hemos encontrado un resultado, lo valoramos como hit o fail
             if(np.count_nonzero(mask) > 0):
@@ -137,7 +140,7 @@ class Bandit:
                     self.item_fail(item)
             else:
                 self.item_miss(item)
-            viewed[target] = np.append(viewed[target],[item])
+            viewed[self.target] = np.append(viewed[self.target],[item])
 
             results[0].append(epoch)
             results[1].append(numhits/totalhits)

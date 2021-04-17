@@ -3,7 +3,7 @@ import pandas as pd
 
 import random
 
-from Bandit import Bandit
+from abstract.Bandit import Bandit
 
 # Definición de funciones de distribución con soporte en [0,1] y media alpha/(alpha+beta)
 # Recibe un array de alphas y betas y devuelve un valor aleatorio de cada distribución

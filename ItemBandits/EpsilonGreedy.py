@@ -3,7 +3,7 @@ import pandas as pd
 
 import random
 
-from Bandit import Bandit
+from abstract.Bandit import Bandit
 
 
 # Algoritmo epsilon-greedy. Se elige el algoritmo con mayor recompensa esperada

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from Bandit import Bandit
+from abstract.Bandit import Bandit
 
 class CNAME(Bandit):
     def __init__(self,w=1):

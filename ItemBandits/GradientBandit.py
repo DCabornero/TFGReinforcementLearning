@@ -4,7 +4,7 @@ import pandas as pd
 import random
 from scipy.special import softmax
 
-from Bandit import Bandit
+from abstract.Bandit import Bandit
 
 
 # Algoritmo gradiente. Cada brazo tiene una probabilidad que es recalculada

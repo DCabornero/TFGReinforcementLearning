@@ -11,6 +11,9 @@ class DynUCB(Bandit):
         self.alpha = 1+ np.sqrt(np.log(2/conf)/2)
         self.numClusters = clusters
 
+    def __str__(self):
+        return 'DynUCB'
+
     # Al pasarle el fichero tags, se inicializa la clase contexto
     def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag', timeName='timestamp'):
         self.context = Context()

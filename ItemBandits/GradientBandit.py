@@ -21,6 +21,9 @@ class GradientBandit(Bandit):
         self.avgReward = 0
         self.epochs = 0
 
+    def __str__(self):
+        return 'Gradiente'
+
     def add_itemArms(self):
         super().add_itemArms()
         # Valor de preferencia para cada brazo

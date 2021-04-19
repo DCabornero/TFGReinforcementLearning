@@ -10,6 +10,9 @@ class UCB(EpsilonGreedy):
         super().__init__(alpha=alpha)
         self.c = c
 
+    def __str__(self):
+        return 'UCB'
+
     def add_itemArms(self):
         super().add_itemArms()
         self.epochs = 0

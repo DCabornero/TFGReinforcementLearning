@@ -14,6 +14,9 @@ class CLUB(Bandit):
         self.alpha = alpha
         self.beta = beta
 
+    def __str__(self):
+        return 'CLUB'
+
     # Al pasarle el fichero tags, se inicializa la clase contexto
     def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag', timeName='timestamp'):
         self.context = Context()

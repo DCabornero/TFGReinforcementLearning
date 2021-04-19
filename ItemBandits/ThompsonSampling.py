@@ -30,6 +30,9 @@ class ThompsonSampling(Bandit):
         self.func = dict_func.get(func)
         self.disc = disc_func.get(func)
 
+    def __str__(self):
+        return 'Thompson'
+
     # Devuelve el índice del brazo seleccionado según el algoritmo
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)

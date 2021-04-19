@@ -8,6 +8,9 @@ class CNAME(Bandit):
         super().__init__()
         self.w = w
 
+    def __str__(self):
+        return 'CNAME'
+
     def add_itemArms(self):
         super().add_itemArms()
         self.arms['Q'] = np.zeros((len(self.arms.index)))

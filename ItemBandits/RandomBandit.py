@@ -11,3 +11,6 @@ class RandomBandit(Bandit):
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)
         return np.random.choice(availableArms)
+
+    def __str__(self):
+        return 'Random'

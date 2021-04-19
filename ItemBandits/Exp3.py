@@ -23,6 +23,9 @@ class Exp3(Bandit):
         # self.oldEpsilon = 1/len(self.arms.index)
         self.epochs = 0
 
+    def __str__(self):
+        return 'EXP3'
+
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)
         weights = self.arms.loc[availableArms,['Weight']].to_numpy()[:,0]

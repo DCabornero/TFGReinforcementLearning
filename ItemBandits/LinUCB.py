@@ -10,6 +10,9 @@ class LinUCB(Bandit):
         super().__init__()
         self.alpha = alpha
 
+    def __str__(self):
+        return 'LinUCB'
+
     # Al pasarle el fichero tags, se inicializa la clase contexto
     def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag', timeName='timestamp'):
         self.context = Context()

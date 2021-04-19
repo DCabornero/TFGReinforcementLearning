@@ -20,6 +20,9 @@ class EpsilonGreedy(Bandit):
         self.alpha = alpha
         self.initial = initial
 
+    def __str__(self):
+        return 'Epsilon-Greedy'
+
     def add_itemArms(self):
         super().add_itemArms()
         self.arms['Epochs'] = np.zeros((len(self.arms.index)))

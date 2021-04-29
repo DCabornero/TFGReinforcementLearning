@@ -33,6 +33,7 @@ class Exp3(Bandit):
 
         probs = (1-self.alpha)*weights/totalWeights + self.alpha/len(availableArms)
         chosen = np.random.choice(np.arange(len(availableArms)),p=probs)
+        self.probs = probs
         self.probChosen = probs[chosen]
         return availableArms[chosen]
 
@@ -56,7 +57,7 @@ class Exp3(Bandit):
 
     def update_preference(self,item,reward):
         peso = self.arms.loc[item,'Weight']
-        exponente = (self.alpha/len(self.listItems))*(reward/self.probChosen)
+        exponente = (self.alpha/len(self.probs))*(reward/self.probChosen)
         self.arms.loc[item,'Weight'] = peso*np.exp(exponente)
         self.epochs += 1
         self.alpha = np.exp(-self.epochs/(10*len(self.listItems)))

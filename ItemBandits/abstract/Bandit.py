@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from Datos import Datos
+from Context import Context
 
 from sklearn.model_selection import train_test_split
 
@@ -18,6 +19,9 @@ from tqdm.notebook import tqdm
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
 # El trainSet debe ser dado en formato de matriz numPy.
 class Bandit:
+    # De predeterminado un algoritmo es contextual
+    contextual = False
+
     # userName: nombre de la columna que contiene los userID
     # itemName: nombre de la columna que contiene los itemID
     # ratingName: nombre de la columna que contiene los ratings
@@ -25,7 +29,7 @@ class Bandit:
     def __init__(self,userName='userId',itemName='movieId',ratingName='rating', timeName='timestamp'):
         self.arms = None
         self.results = None
-        self.times = np.zeros((3))
+        self.times = 0
         self.names = {'user':userName,
                       'item':itemName,
                       'rating': ratingName,
@@ -44,6 +48,12 @@ class Bandit:
         ratings = np.unique(self.ratings.extraeCols(self.names['rating']))
         self.avgRating = np.mean(ratings)
 
+    # Al pasarle el fichero tags, se inicializa la clase contexto. Solo es necesario si se requiere un contexto.
+    def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag', timeName='timestamp'):
+        self.context = Context()
+        self.context.read_csv(tags)
+
+    # Crea el dataframe que va a guardar todas las características necesarias de cada item
     def add_itemArms(self):
         empty = np.zeros((len(self.listItems)))
         self.arms = pd.DataFrame({'Hits': empty, 'Fails': empty, 'Misses': empty}, index=self.listItems)
@@ -74,12 +84,15 @@ class Bandit:
     # en clases heredadas
     def item_miss(self,item):
         self.arms.loc[item,'Misses'] += 1
+        self.rewards.append(0)
 
     def item_hit(self,item):
         self.arms.loc[item,'Hits'] += 1
+        self.rewards.append(1)
 
     def item_fail(self,item):
         self.arms.loc[item,'Fails'] += 1
+        self.rewards.append(0)
 
     # Depende del algoritmo de selección concreto
     @abstractmethod
@@ -94,8 +107,10 @@ class Bandit:
         index = 0
         epoch = 0
         numhits = 0
+        self.rewards = []
         bar = tqdm(total=epochs)
 
+        t0 = time()
         # Ordenación por timestamp
         cols = [self.names[x] for x in ['user','item','rating']]
         ordered_index = np.argsort(self.ratings.extraeCols([self.names['time']])[:,0])
@@ -109,7 +124,8 @@ class Bandit:
 
         viewed = self.get_rated(train)
         self.add_itemArms()
-        results = [[],[]]
+        recall = []
+        rewards = []
 
         # Número de hits por descubrir
         totalhits = np.shape(test[test[:,2]>=self.avgRating])[0]
@@ -121,10 +137,8 @@ class Bandit:
         while epoch < epochs:
             bar.update()
             self.target = self.listUsers[index]
-            t0 = time()
+
             item = self.select_arm(viewed[self.target])
-            t1 = time()
-            self.times[0] += t1-t0
 
             # Comprobamos si tenemos la recomendación del item en el testSet
             mask = np.logical_and(test[:,0] == self.target,test[:,1] == item)
@@ -142,8 +156,7 @@ class Bandit:
                 self.item_miss(item)
             viewed[self.target] = np.append(viewed[self.target],[item])
 
-            results[0].append(epoch)
-            results[1].append(numhits/totalhits)
+            recall.append(numhits/totalhits)
 
             index += 1
             # Cuando agotamos los usuarios los barajamos y volvemos a empezar
@@ -152,10 +165,10 @@ class Bandit:
                 index = 0
 
             epoch += 1
-        print(self.times)
-        self.results = results
+        t1 = time()
+        self.times = t1-t0
+        self.recall = recall
 
-        return results
 
     def plot_results(self):
         if self.results:

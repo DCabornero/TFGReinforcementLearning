@@ -6,17 +6,13 @@ import pandas as pd
 import operator
 
 class LinUCB(Bandit):
+    contextual = True
     def __init__(self,alpha=0.1):
         super().__init__()
         self.alpha = alpha
 
     def __str__(self):
         return 'LinUCB'
-
-    # Al pasarle el fichero tags, se inicializa la clase contexto
-    def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag', timeName='timestamp'):
-        self.context = Context()
-        self.context.read_csv(tags)
 
     # Se añade a diccionarios la matriz, el vector y el contexto correspondiente a cada item
     def add_itemArms(self):

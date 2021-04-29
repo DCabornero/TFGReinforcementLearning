@@ -20,7 +20,7 @@ class Analysis():
             plt.plot(np.arange(len(bandit.recall)),bandit.recall,label=str(bandit))
         plt.xlabel('Épocas')
         plt.ylabel('Recall acumulado')
-        plt.set_title('Evolución del recall acumulado')
+        plt.title('Evolución del recall acumulado')
         plt.legend()
         plt.show()
 

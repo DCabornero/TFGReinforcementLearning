@@ -13,7 +13,11 @@ import random
 import matplotlib.pyplot as plt
 
 from time import time
-from tqdm.notebook import tqdm
+try:
+    get_ipython().__class__.__name__
+    from tqdm.notebook import tqdm
+except:
+    from tqdm import tqdm
 
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
@@ -109,6 +113,7 @@ class Bandit:
         numhits = 0
         self.rewards = []
         bar = tqdm(total=epochs)
+
 
         t0 = time()
         # Ordenación por timestamp

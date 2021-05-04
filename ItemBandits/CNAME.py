@@ -4,12 +4,13 @@ import pandas as pd
 from abstract.Bandit import Bandit
 
 class CNAME(Bandit):
+    name = 'CNAME'
     def __init__(self,w=1):
         super().__init__()
         self.w = w
 
     def __str__(self):
-        return 'CNAME'
+        return self.name
 
     def add_itemArms(self):
         super().add_itemArms()

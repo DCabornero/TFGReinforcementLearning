@@ -8,6 +8,7 @@ import operator
 
 class CLUB(Bandit):
     contextual = True
+    name = 'CLUB'
     # alpha: parámtero de exploración
     # beta: parámtero de eliminación de enlace
     def __init__(self,alpha,beta):
@@ -16,7 +17,7 @@ class CLUB(Bandit):
         self.beta = beta
 
     def __str__(self):
-        return 'CLUB'
+        return self.name
 
     # Se añade a diccionarios la matriz y el vector correspondiente a cada usuario y a cada cluster
     def add_itemArms(self):

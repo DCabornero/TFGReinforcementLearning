@@ -6,12 +6,13 @@ import random
 from EpsilonGreedy import EpsilonGreedy
 
 class UCB(EpsilonGreedy):
+    name = 'UCB'
     def __init__(self,alpha=None,c=2):
         super().__init__(alpha=alpha)
         self.c = c
 
     def __str__(self):
-        return 'UCB'
+        return self.name
 
     def add_itemArms(self):
         super().add_itemArms()

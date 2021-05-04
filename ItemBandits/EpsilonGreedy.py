@@ -10,6 +10,7 @@ from abstract.Bandit import Bandit
 # con probabilidad 1-epsilon. Se escoge cualquier otro algoritmo con probabilidad
 # epsilon.
 class EpsilonGreedy(Bandit):
+    name = 'Epsilon-Greedy'
     # epsilon: probabilidad con la que se explora
     # alpha: peso de la última recompensa dentro del promedio de recompensas (entre 0 y 1).
     # Si no se indica, se realiza el algoritmo epsilon-greedy clásico
@@ -21,7 +22,7 @@ class EpsilonGreedy(Bandit):
         self.initial = initial
 
     def __str__(self):
-        return 'Epsilon-Greedy'
+        return self.name
 
     def add_itemArms(self):
         super().add_itemArms()

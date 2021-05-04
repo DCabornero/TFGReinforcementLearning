@@ -9,6 +9,7 @@ from abstract.Bandit import Bandit
 
 # Algoritmo exp3.
 class Exp3(Bandit):
+    name = 'EXP3'
     # alpha: constante de exploración
     def __init__(self):
         super().__init__()
@@ -24,7 +25,7 @@ class Exp3(Bandit):
         self.epochs = 0
 
     def __str__(self):
-        return 'EXP3'
+        return self.name
 
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)

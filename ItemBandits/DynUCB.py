@@ -7,13 +7,14 @@ import operator
 
 class DynUCB(Bandit):
     contextual = True
+    name = 'DynUCB'
     def __init__(self,conf=0.05,clusters=10):
         super().__init__()
         self.alpha = 1+ np.sqrt(np.log(2/conf)/2)
         self.numClusters = clusters
 
     def __str__(self):
-        return 'DynUCB'
+        return self.name
 
     # Se añade a diccionarios la matriz y el vector correspondiente a cada usuario y a cada cluster
     def add_itemArms(self):

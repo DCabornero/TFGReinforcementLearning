@@ -23,6 +23,7 @@ disc_func = {'Beta':False, 'Bernouilli': True}
 # Bandido que escoge un brazo al azar en función de una distribución
 # dependiente del número de aciertos y errores de cada brazo
 class ThompsonSampling(Bandit):
+    name = 'Thompson'
     def __init__(self,func='Beta',alpha=1,beta=1):
         super().__init__()
         self.alpha = alpha
@@ -31,7 +32,7 @@ class ThompsonSampling(Bandit):
         self.disc = disc_func.get(func)
 
     def __str__(self):
-        return 'Thompson'
+        return self.name
 
     # Devuelve el índice del brazo seleccionado según el algoritmo
     def select_arm(self,viewed):

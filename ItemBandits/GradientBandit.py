@@ -10,6 +10,7 @@ from abstract.Bandit import Bandit
 # Algoritmo gradiente. Cada brazo tiene una probabilidad que es recalculada
 # en cada época según los criterios habituales del descenso gradiente.
 class GradientBandit(Bandit):
+    name = 'Gradiente'
     # alpha: tasa de aprendizaje del descenso gradiente
     # avgRate: tasa para calcular el promedio de recompensas. Si la situación es
     #          estacionaria debe ser None, si es no-estacionaria adopta valores
@@ -22,7 +23,7 @@ class GradientBandit(Bandit):
         self.epochs = 0
 
     def __str__(self):
-        return 'Gradiente'
+        return self.name
 
     def add_itemArms(self):
         super().add_itemArms()

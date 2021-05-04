@@ -7,12 +7,13 @@ import operator
 
 class LinUCB(Bandit):
     contextual = True
+    name = 'LinUCB'
     def __init__(self,alpha=0.1):
         super().__init__()
         self.alpha = alpha
 
     def __str__(self):
-        return 'LinUCB'
+        return self.name
 
     # Se añade a diccionarios la matriz, el vector y el contexto correspondiente a cada item
     def add_itemArms(self):

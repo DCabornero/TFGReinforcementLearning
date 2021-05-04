@@ -7,10 +7,11 @@ from abstract.Bandit import Bandit
 
 # Bandido que escoge un brazo al azar
 class RandomBandit(Bandit):
+    name = 'Random'
     # Sabiendo los items que ya ha visto el usuario, se devuleve otro aleatoriamente
     def select_arm(self,viewed):
         availableArms = self.available_arms(viewed)
         return np.random.choice(availableArms)
 
     def __str__(self):
-        return 'Random'
+        return self.name

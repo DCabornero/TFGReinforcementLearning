@@ -13,11 +13,12 @@ import random
 import matplotlib.pyplot as plt
 
 from time import time
-try:
-    get_ipython().__class__.__name__
-    from tqdm.notebook import tqdm
-except:
-    from tqdm import tqdm
+# Posiblemente lo quite en la versión final
+# try:
+#     get_ipython().__class__.__name__
+#     from tqdm.notebook import tqdm
+# except:
+#     from tqdm import tqdm
 
 # Cada uno de los Arms tendrá un sistema de recomendación que permita
 # dar un elemento a recomendar para un cierto usuario siguiendo un cierto algoritmo.
@@ -107,7 +108,7 @@ class Bandit:
     # Devuelve un array con dos listas: la primera son las épocas y la segunda
     # el recall relativo en cada época (que corresponde con la gráfica mostrada)
     # Si shuffle está a False, el conjunto de entrenamiento serán los elementos más antiguos
-    def run_epoch(self,epochs=500,trainSize=0.1,shuffle=True):
+    def run_epoch(self,epochs=500,shuffle=True):
         index = 0
         epoch = 0
         numhits = 0
@@ -119,15 +120,17 @@ class Bandit:
         # Ordenación por timestamp
         cols = [self.names[x] for x in ['user','item','rating']]
         ordered_index = np.argsort(self.ratings.extraeCols([self.names['time']])[:,0])
-        ord_ratings = self.ratings.extraeCols(cols)[ordered_index]
-        if trainSize > 0:
-            train, test = train_test_split(ord_ratings, train_size=trainSize, shuffle=shuffle)
-        else:
-            train = np.array([])
-            test = ord_ratings
+        # ord_ratings = self.ratings.extraeCols(cols)[ordered_index]
+        # if trainSize > 0:
+        #     train, test = train_test_split(ord_ratings, train_size=trainSize, shuffle=shuffle)
+        # else:
+        #     train = np.array([])
+        #     test = ord_ratings
+        test = self.ratings.extraeCols(cols)[ordered_index]
 
 
-        viewed = self.get_rated(train)
+        # viewed = self.get_rated(train)
+        viewed = {u:[] for u in self.listUsers}
         self.add_itemArms()
         recall = []
         rewards = []
@@ -173,6 +176,10 @@ class Bandit:
         t1 = time()
         self.times = t1-t0
         self.recall = recall
+
+    # Una vez hallados los resultados, halla el coeficiente de Gini
+    def gini(self):
+        results = self.arms['Hits']
 
 
     def plot_results(self):

@@ -113,7 +113,7 @@ class Bandit:
         epoch = 0
         numhits = 0
         self.rewards = []
-        bar = tqdm(total=epochs)
+        # bar = tqdm(total=epochs)
 
 
         t0 = time()
@@ -143,7 +143,7 @@ class Bandit:
 
         # Comienzan a correr las épocas
         while epoch < epochs:
-            bar.update()
+            # bar.update()
             self.target = self.listUsers[index]
 
             item = self.select_arm(viewed[self.target])

@@ -45,3 +45,18 @@ class Analysis():
         if self.path:
             plt.savefig(self.path+'times.png')
         plt.show()
+
+    # Devuelve una gráfica con el tiempo de ejecución de cada bandit.
+    def gini(self):
+        plt.figure()
+        fig, ax = plt.subplots()
+        names = [str(bandit) for bandit in self.bandits]
+        ginis = [bandit.gini() for bandit in self.bandits]
+        ax.barh(np.arange(len(self.bandits)),ginis)
+        ax.set_yticks(np.arange(len(self.bandits)))
+        ax.set_yticklabels(names)
+        ax.set_xlabel('Coeficiente de Gini')
+        ax.set_title('Comparación de coeficientes de Gini')
+        if self.path:
+            plt.savefig(self.path+'gini.png')
+        plt.show()

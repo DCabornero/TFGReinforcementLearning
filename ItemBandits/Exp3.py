@@ -11,9 +11,10 @@ from abstract.Bandit import Bandit
 class Exp3(Bandit):
     name = 'EXP3'
     # alpha: constante de exploración
-    def __init__(self):
+    def __init__(self,k=10):
         super().__init__()
         self.alpha = 1
+        self.k = k
 
     def add_itemArms(self):
         super().add_itemArms()
@@ -61,7 +62,7 @@ class Exp3(Bandit):
         exponente = (self.alpha/len(self.probs))*(reward/self.probChosen)
         self.arms.loc[item,'Weight'] = peso*np.exp(exponente)
         self.epochs += 1
-        self.alpha = np.exp(-self.epochs/(10*len(self.listItems)))
+        self.alpha = np.exp(-self.epochs/(self.k*len(self.listItems)))
 
         # self.arms.at[item,'Reward'] += reward/self.prob
 

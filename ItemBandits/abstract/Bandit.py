@@ -31,14 +31,13 @@ class Bandit:
     # itemName: nombre de la columna que contiene los itemID
     # ratingName: nombre de la columna que contiene los ratings
     # timeName: timestamp de cada valoracion
-    def __init__(self,userName='userId',itemName='movieId',ratingName='rating', timeName='timestamp'):
+    def __init__(self,userName='userId',itemName='movieId',ratingName='rating'):
         self.arms = None
         self.results = None
         self.times = 0
         self.names = {'user':userName,
                       'item':itemName,
-                      'rating': ratingName,
-                      'time': timeName}
+                      'rating': ratingName}
 
     # ratings: CSV que contiene todos los ejemplos posibles con mínimo tres columnas:
     # - ID del usuario (default: userId)
@@ -54,7 +53,7 @@ class Bandit:
         self.avgRating = np.mean(ratings)
 
     # Al pasarle el fichero tags, se inicializa la clase contexto. Solo es necesario si se requiere un contexto.
-    def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag', timeName='timestamp'):
+    def read_tags_csv(self,tags,userName='userId',itemName='movieId',tagName='tag'):
         self.context = Context()
         self.context.read_csv(tags)
 
@@ -107,8 +106,7 @@ class Bandit:
     # Corre un cierto número de épocas con un algoritmo especificado.
     # Devuelve un array con dos listas: la primera son las épocas y la segunda
     # el recall relativo en cada época (que corresponde con la gráfica mostrada)
-    # Si shuffle está a False, el conjunto de entrenamiento serán los elementos más antiguos
-    def run_epoch(self,epochs=500,shuffle=True):
+    def run_epoch(self,epochs=500):
         index = 0
         epoch = 0
         numhits = 0
@@ -119,15 +117,15 @@ class Bandit:
         t0 = time()
         # Ordenación por timestamp
         cols = [self.names[x] for x in ['user','item','rating']]
-        ordered_index = np.argsort(self.ratings.extraeCols([self.names['time']])[:,0])
+        # ordered_index = np.argsort(self.ratings.extraeCols([self.names['time']])[:,0])
         # ord_ratings = self.ratings.extraeCols(cols)[ordered_index]
         # if trainSize > 0:
         #     train, test = train_test_split(ord_ratings, train_size=trainSize, shuffle=shuffle)
         # else:
         #     train = np.array([])
         #     test = ord_ratings
-        test = self.ratings.extraeCols(cols)[ordered_index]
-
+        # test = self.ratings.extraeCols(cols)[ordered_index]
+        test = self.ratings.extraeCols(cols)
 
         # viewed = self.get_rated(train)
         viewed = {u:[] for u in self.listUsers}
@@ -179,7 +177,18 @@ class Bandit:
 
     # Una vez hallados los resultados, halla el coeficiente de Gini
     def gini(self):
-        results = self.arms['Hits']
+        # results = self.arms['Hits'].to_numpy()
+        # numItems = len(self.listItems)
+        # numerador = 0
+        # for x in results:
+        #     for y in results:
+        #         numerador += np.abs(x-y)
+        # avg = np.mean(results)
+        # return numerador/(2*np.power(numItems,2) * avg)
+        sorted = np.sort(self.arms['Hits'].to_numpy(),kind='mergesort')
+        n = len(sorted)
+        indices = np.arange(n) + 1
+        return np.sum((2*indices - n - 1) * sorted) / (n * np.sum(sorted))
 
 
     def plot_results(self):

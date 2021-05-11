@@ -43,7 +43,7 @@ class Analysis():
         ax.set_xlabel('Tiempo (segundos)')
         ax.set_title('Comparación de tiempos')
         if self.path:
-            plt.savefig(self.path+'times.png')
+            plt.savefig(self.path+'/'+self.name+'times.png')
         plt.show()
 
     # Devuelve una gráfica con el tiempo de ejecución de cada bandit.
@@ -58,5 +58,5 @@ class Analysis():
         ax.set_xlabel('Coeficiente de Gini')
         ax.set_title('Comparación de coeficientes de Gini')
         if self.path:
-            plt.savefig(self.path+'gini.png')
+            plt.savefig(self.path+'/'+self.name+'gini.png')
         plt.show()

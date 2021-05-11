@@ -8,9 +8,9 @@ import operator
 class DynUCB(Bandit):
     contextual = True
     name = 'DynUCB'
-    def __init__(self,conf=0.05,clusters=10):
+    def __init__(self,alpha=0.1,clusters=10):
         super().__init__()
-        self.alpha = 1+ np.sqrt(np.log(2/conf)/2)
+        self.alpha = alpha
         self.numClusters = clusters
 
     def __str__(self):

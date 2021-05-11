@@ -27,24 +27,24 @@ class Bandit:
     # De predeterminado un algoritmo es contextual
     contextual = False
 
-    # userName: nombre de la columna que contiene los userID
-    # itemName: nombre de la columna que contiene los itemID
-    # ratingName: nombre de la columna que contiene los ratings
-    # timeName: timestamp de cada valoracion
-    def __init__(self,userName='userId',itemName='movieId',ratingName='rating'):
+
+    def __init__(self):
         self.arms = None
         self.results = None
         self.times = 0
-        self.names = {'user':userName,
-                      'item':itemName,
-                      'rating': ratingName}
 
     # ratings: CSV que contiene todos los ejemplos posibles con mínimo tres columnas:
     # - ID del usuario (default: userId)
     # - ID del item (default: itemId)
     # - valorción que ha dado dicho usuario a dicho item (default: rating)
-    def read_csv(self,ratings):
+    # userName: nombre de la columna que contiene los userID
+    # itemName: nombre de la columna que contiene los itemID
+    # ratingName: nombre de la columna que contiene los ratings
+    def read_csv(self,ratings,userName='userId',itemName='movieId',ratingName='rating'):
         self.ratings = Datos(ratings)
+        self.names = {'user':userName,
+                      'item':itemName,
+                      'rating': ratingName}
         self.listUsers = np.unique(self.ratings.extraeCols([self.names['user']]))
         self.listItems = np.unique(self.ratings.extraeCols([self.names['item']]))
 
@@ -177,15 +177,7 @@ class Bandit:
 
     # Una vez hallados los resultados, halla el coeficiente de Gini
     def gini(self):
-        # results = self.arms['Hits'].to_numpy()
-        # numItems = len(self.listItems)
-        # numerador = 0
-        # for x in results:
-        #     for y in results:
-        #         numerador += np.abs(x-y)
-        # avg = np.mean(results)
-        # return numerador/(2*np.power(numItems,2) * avg)
-        sorted = np.sort(self.arms['Hits'].to_numpy(),kind='mergesort')
+        sorted = np.sort(np.sum(self.arms[['Hits','Misses','Fails']].to_numpy(),axis=1),kind='mergesort')
         n = len(sorted)
         indices = np.arange(n) + 1
         return np.sum((2*indices - n - 1) * sorted) / (n * np.sum(sorted))

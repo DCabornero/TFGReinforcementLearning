@@ -26,7 +26,8 @@ from time import time
 class Bandit:
     # De predeterminado un algoritmo es contextual
     contextual = False
-
+    # Modos de shuffle que se ofrecen
+    shuffle_mode = ['random','balanced','round_robin']
 
     def __init__(self):
         self.arms = None
@@ -88,7 +89,7 @@ class Bandit:
     # en clases heredadas
     def item_miss(self,item):
         self.arms.loc[item,'Misses'] += 1
-        self.rewards.append(0)
+        self.rewards.append(self.miss_value)
 
     def item_hit(self,item):
         self.arms.loc[item,'Hits'] += 1
@@ -106,12 +107,30 @@ class Bandit:
     # Corre un cierto número de épocas con un algoritmo especificado.
     # Devuelve un array con dos listas: la primera son las épocas y la segunda
     # el recall relativo en cada época (que corresponde con la gráfica mostrada)
-    def run_epoch(self,epochs=500):
+    # - epochs: número de épocas que hace el algoritmo
+    # - miss_value: valor que se le da a la recompensa cuando el resultado no existe (recomendado 0)
+    # - miss_not_epoch: si es True, no se pasa de época cuando no se encuentra dato
+    # - shuffle: tiene 3 modos de barajar a los usuarios:
+    #       * balanced: recorre la lista de usuarios, y casa vez que la acaba hace shuffle (aleatorio balanceado)
+    #       * random: siempre escoge un usuario al azar por época (aleatorio no balanceado)
+    #       * round_robin: solo barajea los usuarios al principio. Va recorriendo la lista en orden.
+    # - gini_history: guarda el histórico de los coeficientes de Gini cada época
+    # - time_history: guarda la evolución del tiempo cada época
+    def run_epoch(self,epochs=500,miss_value=0,miss_not_epoch=False,shuffle='balanced',
+                  gini_history=False, time_history=False):
+        if shuffle not in self.shuffle_mode:
+            print('Error: no existe el modo', shuffle)
+            return
         index = 0
         epoch = 0
         numhits = 0
         self.rewards = []
-        # bar = tqdm(total=epochs)
+
+        self.miss_value = miss_value
+        if gini_history:
+            self.gini_history = []
+        if time_history:
+            self.time_history = []
 
 
         t0 = time()
@@ -158,19 +177,36 @@ class Bandit:
                     numhits += 1
                 else:
                     self.item_fail(item)
+                miss = False
             else:
+                miss = True
                 self.item_miss(item)
             viewed[self.target] = np.append(viewed[self.target],[item])
 
-            recall.append(numhits/totalhits)
+            # Se añaden los datos históricos necesarios
+            if not (miss_not_epoch and miss):
+                recall.append(numhits/totalhits)
+            if gini_history and not (miss_not_epoch and miss):
+                self.gini_history.append(self.gini())
+            if time_history and not (miss_not_epoch and miss):
+                self.time_history.append(time()-t0)
+
 
             index += 1
-            # Cuando agotamos los usuarios los barajamos y volvemos a empezar
+            # Barjeo de usuarios
             if index == numUsers:
+                if shuffle == 'balanced':
+                    random.shuffle(self.listUsers)
+                    index = 0
+                elif shuffle == 'round_robin':
+                    index = 0
+            if shuffle == 'random':
                 random.shuffle(self.listUsers)
                 index = 0
+            # Pase de época
+            if not (miss_not_epoch and miss):
+                epoch += 1
 
-            epoch += 1
         t1 = time()
         self.times = t1-t0
         self.recall = recall

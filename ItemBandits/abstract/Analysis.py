@@ -11,12 +11,22 @@ class Analysis():
     # de introducir un contexto en los bandits si fuera necesario.
     # bandits: array de los bandits a ejecutar
     # epochs: número de épocas que va a ejecutarse cada bandit
-    def execute(self,bandits,epochs):
+    def execute(self,bandits,epochs,**kwargs):
         self.bandits = bandits
+        if 'gini_history' in kwargs.keys():
+            self.gini_history = kwargs['gini_history']
+        else:
+            self.gini_history = False
+
+        if 'time_history' in kwargs.keys():
+            self.time_history = kwargs['time_history']
+        else:
+            self.time_history = False
+
         for bandit in bandits:
             print('Ejecutando',str(bandit)+'...')
             bandit.add_itemArms()
-            bandit.run_epoch(epochs)
+            bandit.run_epoch(epochs,**kwargs)
 
     # Devuelve una gráfica con la evolución del recall acumulado de los bandits
     def recall(self):
@@ -45,6 +55,16 @@ class Analysis():
         if self.path:
             plt.savefig(self.path+'/'+self.name+'times.png')
         plt.show()
+        if self.time_history:
+            histories = [bandit.time_history for bandit in self.bandits]
+            plt.xlabel('Épocas')
+            plt.ylabel('Tiempo transcurrido (s)')
+            for i,history in enumerate(histories):
+                plt.plot(np.arange(len(history)),history,label=str(self.bandits[i]))
+            plt.legend()
+            if self.path:
+                plt.savefig(self.path+'/'+self.name+'times_hist.png')
+            plt.show()
 
     # Devuelve una gráfica con el tiempo de ejecución de cada bandit.
     def gini(self):
@@ -60,3 +80,13 @@ class Analysis():
         if self.path:
             plt.savefig(self.path+'/'+self.name+'gini.png')
         plt.show()
+        if self.gini_history:
+            histories = [bandit.gini_history for bandit in self.bandits]
+            plt.xlabel('Épocas')
+            plt.ylabel('Coeficiente de Gini')
+            for i,history in enumerate(histories):
+                plt.plot(np.arange(len(history)),history,label=str(self.bandits[i]))
+            plt.legend()
+            if self.path:
+                plt.savefig(self.path+'/'+self.name+'gini_hist.png')
+            plt.show()
